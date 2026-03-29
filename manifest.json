@@ -1,0 +1,25 @@
+{
+  "name": "LPG 충전 기록",
+  "short_name": "LPG 기록",
+  "description": "LPG 자동차 충전 기록 및 통계 앱",
+  "start_url": "/lpg/",
+  "scope": "/lpg/",
+  "display": "standalone",
+  "background_color": "#f7f8f6",
+  "theme_color": "#1D9E75",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
