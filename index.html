@@ -92,6 +92,19 @@
   .month-label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 0 8px; }
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(10px); background: #1a1c1a; color: white; padding: 10px 20px; border-radius: 24px; font-size: 13px; font-weight: 500; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 999; white-space: nowrap; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .station-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  .station-tab { padding: 7px 12px; border-radius: 99px; border: 1.5px solid var(--border); background: transparent; font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: all 0.15s; }
+  .station-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .edit-btn { background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text3); padding: 6px; border-radius: 8px; transition: all 0.15s; }
+  .edit-btn:hover { background: var(--accent-light); color: var(--accent-dark); }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; display: flex; align-items: flex-end; justify-content: center; }
+  .overlay.hidden { display: none; }
+  .modal { background: var(--surface); border-radius: 24px 24px 0 0; padding: 24px 20px 40px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+  .modal-handle { width: 36px; height: 4px; border-radius: 99px; background: var(--border); margin: 0 auto 20px; }
+  .modal-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .btn-primary { flex: 1; height: 48px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; }
+  .btn-secondary { flex: 1; height: 48px; background: var(--surface2); color: var(--text2); border: none; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; }
 </style>
 </head>
 <body>
@@ -124,7 +137,16 @@
         <div class="form-card-title">기본 정보</div>
         <div class="form-row">
           <div class="form-group"><label>충전 날짜</label><input type="date" id="inp-date"></div>
-          <div class="form-group"><label>주유소</label><input type="text" id="inp-station" placeholder="예) GS 칼텍스"></div>
+        </div>
+        <div class="form-group">
+          <label>주유소</label>
+          <div class="station-tabs" id="station-tabs">
+            <button class="station-tab" onclick="selectStation('E1')">E1</button>
+            <button class="station-tab" onclick="selectStation('SK')">SK</button>
+            <button class="station-tab" onclick="selectStation('GS')">GS</button>
+            <button class="station-tab" onclick="selectStation('S-oil')">S-oil</button>
+            <button class="station-tab" onclick="selectStation('현대')">현대</button>
+          </div>
         </div>
         <div class="form-group"><label>메모</label><input type="text" id="inp-memo" placeholder="예) 집 근처, 할인 행사 등"></div>
       </div>
@@ -169,20 +191,115 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- 수정 모달 -->
+<div class="overlay hidden" id="edit-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">충전 기록 수정</div>
+    <div class="form-group"><label>충전 날짜</label><input type="date" id="edit-date"></div>
+    <div class="form-group">
+      <label>주유소</label>
+      <div class="station-tabs" id="edit-station-tabs">
+        <button class="station-tab" onclick="selectEditStation('E1')">E1</button>
+        <button class="station-tab" onclick="selectEditStation('SK')">SK</button>
+        <button class="station-tab" onclick="selectEditStation('GS')">GS</button>
+        <button class="station-tab" onclick="selectEditStation('S-oil')">S-oil</button>
+        <button class="station-tab" onclick="selectEditStation('현대')">현대</button>
+      </div>
+    </div>
+    <div class="form-group"><label>메모</label><input type="text" id="edit-memo" placeholder="예) 집 근처"></div>
+    <div class="form-row">
+      <div class="form-group"><label>충전 금액 (원)</label><input type="number" id="edit-amount"></div>
+      <div class="form-group"><label>리터당 가격 (원/L)</label><input type="number" id="edit-price" step="0.1"></div>
+    </div>
+    <div class="form-group"><label>충전량 (자동 계산)</label><input type="number" id="edit-liter" readonly style="color:var(--accent-dark);font-weight:700;background:var(--accent-light);border-color:transparent;"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeEditModal()">취소</button>
+      <button class="btn-primary" onclick="saveEdit()">저장</button>
+    </div>
+  </div>
+</div>
 <script>
 const STORAGE_KEY='lpg_records_v3';
 let records=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
 let chart=null,curType='price';
+let selStation='';
+let editStation='';
+let editId=null;
+
 function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(records));}
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200);}
 function switchTab(t){document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['add','stats','history','settings'][i]===t));document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');if(t==='stats')renderStats();if(t==='history')renderHistory();}
+
+function selectStation(name){
+  selStation=name;
+  document.querySelectorAll('#station-tabs .station-tab').forEach(b=>b.classList.toggle('active',b.textContent===name));
+}
+function selectEditStation(name){
+  editStation=name;
+  document.querySelectorAll('#edit-station-tabs .station-tab').forEach(b=>b.classList.toggle('active',b.textContent===name));
+}
+
 function backupData(){const data={records,exportedAt:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='lpg-backup.json';a.click();URL.revokeObjectURL(url);showToast('백업 저장됐어요!');}
 function restoreData(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const data=JSON.parse(ev.target.result);if(!data.records){showToast('올바른 백업 파일이 아니에요');return;}if(!confirm('현재 데이터를 백업으로 교체할까요?'))return;records=data.records;saveData();updateHeader();showToast('복원 완료!');}catch{showToast('파일을 읽을 수 없어요');}};reader.readAsText(file);e.target.value='';}
+
 document.getElementById('inp-date').value=new Date().toISOString().split('T')[0];
-['inp-amount','inp-price'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{const a=parseFloat(document.getElementById('inp-amount').value);const p=parseFloat(document.getElementById('inp-price').value);document.getElementById('inp-liter').value=(a>0&&p>0)?(a/p).toFixed(2):'';}));
-function saveRecord(){const date=document.getElementById('inp-date').value;const station=document.getElementById('inp-station').value.trim()||'미입력';const amount=parseFloat(document.getElementById('inp-amount').value);const price=parseFloat(document.getElementById('inp-price').value);const liter=parseFloat(document.getElementById('inp-liter').value);const memo=document.getElementById('inp-memo').value.trim();if(!date||!amount||!price){showToast('날짜, 금액, 리터당 가격을 입력해주세요');return;}records.unshift({id:Date.now(),date,station,amount,liter,pricePerL:price,memo});saveData();['inp-amount','inp-liter','inp-price','inp-memo','inp-station'].forEach(id=>document.getElementById(id).value='');updateHeader();showToast('충전 기록이 저장됐어요!');switchTab('history');}
+['inp-amount','inp-price'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
+  const a=parseFloat(document.getElementById('inp-amount').value);
+  const p=parseFloat(document.getElementById('inp-price').value);
+  document.getElementById('inp-liter').value=(a>0&&p>0)?(a/p).toFixed(2):'';
+}));
+['edit-amount','edit-price'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
+  const a=parseFloat(document.getElementById('edit-amount').value);
+  const p=parseFloat(document.getElementById('edit-price').value);
+  document.getElementById('edit-liter').value=(a>0&&p>0)?(a/p).toFixed(2):'';
+}));
+
+function saveRecord(){
+  const date=document.getElementById('inp-date').value;
+  const amount=parseFloat(document.getElementById('inp-amount').value);
+  const price=parseFloat(document.getElementById('inp-price').value);
+  const liter=parseFloat(document.getElementById('inp-liter').value);
+  const memo=document.getElementById('inp-memo').value.trim();
+  if(!date||!amount||!price){showToast('날짜, 금액, 리터당 가격을 입력해주세요');return;}
+  if(!selStation){showToast('주유소를 선택해주세요');return;}
+  records.unshift({id:Date.now(),date,station:selStation,amount,liter,pricePerL:price,memo});
+  saveData();
+  ['inp-amount','inp-liter','inp-price','inp-memo'].forEach(id=>document.getElementById(id).value='');
+  selStation='';
+  document.querySelectorAll('#station-tabs .station-tab').forEach(b=>b.classList.remove('active'));
+  updateHeader();showToast('충전 기록이 저장됐어요!');switchTab('history');
+}
+
 function updateHeader(){const total=records.reduce((s,r)=>s+r.amount,0);const avgP=records.length?records.reduce((s,r)=>s+r.pricePerL,0)/records.length:0;document.getElementById('hs-cnt').innerHTML=`${records.length}<span class="hu">회</span>`;document.getElementById('hs-avg').innerHTML=`${Math.round(avgP)}<span class="hu">원/L</span>`;document.getElementById('hs-total').innerHTML=`${(total/10000).toFixed(1)}<span class="hu">만원</span>`;document.getElementById('hdr-sub').textContent=`총 ${records.length}회 충전 기록`;}
-function renderHistory(){const el=document.getElementById('history-list');if(!records.length){el.innerHTML='<div class="empty">아직 충전 기록이 없어요.<br>첫 번째 충전을 기록해보세요!</div>';return;}const sorted=[...records].sort((a,b)=>new Date(b.date)-new Date(a.date));let html='';let lastMonth='';sorted.forEach((r,i)=>{const m=r.date.slice(0,7);if(m!==lastMonth){const[y,mo]=m.split('-');html+=`<div class="month-label">${y}년 ${parseInt(mo)}월</div>`;lastMonth=m;}const prev=sorted[i+1];let badge='';if(prev){const diff=r.pricePerL-prev.pricePerL;if(diff>0.5)badge=`<span class="badge badge-up">▲${diff.toFixed(1)}</span>`;else if(diff<-0.5)badge=`<span class="badge badge-dn">▼${Math.abs(diff).toFixed(1)}</span>`;}html+=`<div class="h-item"><div class="h-left"><div class="station">${r.station}</div>${r.memo?`<div class="memo">${r.memo}</div>`:''}<div class="date">${r.date}</div></div><div class="h-right"><div class="amount">${r.amount.toLocaleString()}원${badge}</div><div class="detail">${r.liter.toFixed(1)}L 충전</div><div class="pprice">${r.pricePerL.toFixed(1)}원/L</div></div><div class="h-actions"><button class="del-btn" onclick="delRecord(${r.id})">✕</button></div></div>`;});el.innerHTML=html;}
+
+function openEditModal(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  editId=id;editStation=r.station;
+  document.getElementById('edit-date').value=r.date;
+  document.getElementById('edit-amount').value=r.amount;
+  document.getElementById('edit-price').value=r.pricePerL;
+  document.getElementById('edit-liter').value=r.liter.toFixed(2);
+  document.getElementById('edit-memo').value=r.memo||'';
+  document.querySelectorAll('#edit-station-tabs .station-tab').forEach(b=>b.classList.toggle('active',b.textContent===r.station));
+  document.getElementById('edit-overlay').classList.remove('hidden');
+}
+function closeEditModal(){document.getElementById('edit-overlay').classList.add('hidden');editId=null;}
+function saveEdit(){
+  const r=records.find(x=>x.id===editId);if(!r)return;
+  const amount=parseFloat(document.getElementById('edit-amount').value);
+  const price=parseFloat(document.getElementById('edit-price').value);
+  if(!amount||!price){showToast('금액과 리터당 가격을 입력해주세요');return;}
+  r.date=document.getElementById('edit-date').value;
+  r.station=editStation||r.station;
+  r.amount=amount;r.pricePerL=price;
+  r.liter=parseFloat(document.getElementById('edit-liter').value);
+  r.memo=document.getElementById('edit-memo').value.trim();
+  saveData();closeEditModal();updateHeader();renderHistory();showToast('수정됐어요!');
+}
+
+function renderHistory(){const el=document.getElementById('history-list');if(!records.length){el.innerHTML='<div class="empty">아직 충전 기록이 없어요.<br>첫 번째 충전을 기록해보세요!</div>';return;}const sorted=[...records].sort((a,b)=>new Date(b.date)-new Date(a.date));let html='';let lastMonth='';sorted.forEach((r,i)=>{const m=r.date.slice(0,7);if(m!==lastMonth){const[y,mo]=m.split('-');html+=`<div class="month-label">${y}년 ${parseInt(mo)}월</div>`;lastMonth=m;}const prev=sorted[i+1];let badge='';if(prev){const diff=r.pricePerL-prev.pricePerL;if(diff>0.5)badge=`<span class="badge badge-up">▲${diff.toFixed(1)}</span>`;else if(diff<-0.5)badge=`<span class="badge badge-dn">▼${Math.abs(diff).toFixed(1)}</span>`;}html+=`<div class="h-item"><div class="h-left"><div class="station">${r.station}</div>${r.memo?`<div class="memo">${r.memo}</div>`:''}<div class="date">${r.date}</div></div><div class="h-right"><div class="amount">${r.amount.toLocaleString()}원${badge}</div><div class="detail">${r.liter.toFixed(1)}L 충전</div><div class="pprice">${r.pricePerL.toFixed(1)}원/L</div></div><div class="h-actions"><button class="edit-btn" onclick="openEditModal(${r.id})">✏️</button><button class="del-btn" onclick="delRecord(${r.id})">✕</button></div></div>`;});el.innerHTML=html;}
 function delRecord(id){if(!confirm('이 기록을 삭제할까요?'))return;records=records.filter(r=>r.id!==id);saveData();updateHeader();renderHistory();showToast('삭제됐어요');}
 function renderStats(){const now=new Date();const thisM=records.filter(r=>{const d=new Date(r.date);return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();});const amtM=thisM.reduce((s,r)=>s+r.amount,0);const totalL=records.reduce((s,r)=>s+r.liter,0);const avgP=records.length?records.reduce((s,r)=>s+r.pricePerL,0)/records.length:0;document.getElementById('stats-grid').innerHTML=`<div class="stat-card accent"><div class="lbl">이번달 충전 횟수</div><div class="val">${thisM.length}<span class="unit">회</span></div></div><div class="stat-card"><div class="lbl">이번달 총 금액</div><div class="val">${(amtM/10000).toFixed(1)}<span class="unit">만원</span></div></div><div class="stat-card"><div class="lbl">평균 단가</div><div class="val">${Math.round(avgP)}<span class="unit">원/L</span></div></div><div class="stat-card"><div class="lbl">전체 충전량</div><div class="val">${Math.round(totalL)}<span class="unit">L</span></div></div>`;renderChart(curType);if(records.length>=2){const prices=records.map(r=>r.pricePerL);const min=Math.min(...prices),max=Math.max(...prices);const best=records.find(r=>r.pricePerL===min);const worst=records.find(r=>r.pricePerL===max);document.getElementById('tip-body').innerHTML=`최저가: <strong>${min.toFixed(1)}원/L</strong> — ${best.station} (${best.date})<br>최고가: <strong>${max.toFixed(1)}원/L</strong> — ${worst.station} (${worst.date})<br>최저가 주유소만 이용하면 1회 평균 <strong>${Math.round((max-min)*47)}원</strong> 절약 가능해요!`;}}
 function switchChart(btn,type){curType=type;document.querySelectorAll('.chart-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const titles={price:'리터당 가격 추이',amount:'충전 금액 추이',liter:'충전량 추이'};document.getElementById('chart-title').textContent=titles[type];renderChart(type);}
