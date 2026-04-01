@@ -180,6 +180,18 @@
     </div>
     <div id="tab-settings" class="section">
       <div class="form-card">
+        <div class="form-card-title">☁️ GitHub 동기화</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx"
+            style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--text1);font-family:'Noto Sans KR',sans-serif;background:var(--bg2);outline:none;">
+          <div style="display:flex;gap:8px;">
+            <button class="save-btn" onclick="saveGhToken()" style="flex:1;background:var(--accent);">토큰 저장</button>
+            <button class="save-btn" onclick="syncFromGitHub()" style="flex:1;background:var(--text2);">지금 불러오기</button>
+          </div>
+          <div id="syncStatus" style="font-size:12px;color:var(--text2);line-height:1.6;"></div>
+        </div>
+      </div>
+      <div class="form-card">
         <div class="form-card-title">데이터 백업</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
           <button class="save-btn" onclick="backupData()" style="background:var(--accent);">백업 저장 (JSON 다운로드)</button>
@@ -228,9 +240,79 @@ let selStation='';
 let editStation='';
 let editId=null;
 
-function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(records));}
+function saveData(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+  githubSave();
+}
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200);}
-function switchTab(t){document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['add','stats','history','settings'][i]===t));document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');if(t==='stats')renderStats();if(t==='history')renderHistory();}
+function switchTab(t){
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['add','stats','history','settings'][i]===t));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  if(t==='stats')renderStats();
+  if(t==='history')renderHistory();
+  if(t==='settings'){
+    const el=document.getElementById('syncStatus');
+    if(el)el.textContent=getGhToken()?'✅ 토큰 설정됨 · 자동 저장 활성화':'⚠️ 토큰 없음 · 데이터가 언제든 삭제될 수 있어요';
+  }
+}
+
+// ─── GITHUB 동기화 ──────────────────────────────────────────────
+const GH_OWNER='beenijua',GH_REPO='lpg',GH_FILE='data/lpg-data.json';
+const GH_API=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`;
+function getGhToken(){return localStorage.getItem('gh_token_lpg')||'';}
+
+function saveGhToken(){
+  const t=document.getElementById('ghToken').value.trim();
+  if(!t){showToast('토큰을 입력해주세요');return;}
+  localStorage.setItem('gh_token_lpg',t);
+  document.getElementById('ghToken').value='';
+  document.getElementById('syncStatus').textContent='✅ 토큰 저장됐어요! 지금 불러오기를 눌러보세요.';
+  showToast('토큰 저장됐어요 ✅');
+}
+
+let _ghTimer=null;
+async function githubSave(){
+  const token=getGhToken();if(!token)return;
+  clearTimeout(_ghTimer);
+  _ghTimer=setTimeout(async()=>{
+    try{
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify({records,exportedAt:new Date().toISOString()}))));
+      let sha='';
+      try{const r=await fetch(GH_API,{headers:{Authorization:`token ${token}`}});if(r.ok){const j=await r.json();sha=j.sha;}}catch(e){}
+      const body={message:'sync: lpg data',content};if(sha)body.sha=sha;
+      const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:`token ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(res.ok){
+        const now=new Date();
+        const el=document.getElementById('syncStatus');
+        if(el)el.textContent=`☁️ 마지막 저장: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+      }
+    }catch(e){}
+  },1000);
+}
+
+async function syncFromGitHub(){
+  const token=getGhToken();
+  if(!token){showToast('먼저 토큰을 저장해주세요');return;}
+  const el=document.getElementById('syncStatus');
+  if(el)el.textContent='⏳ 불러오는 중...';
+  try{
+    const res=await fetch(GH_API+'?t='+Date.now(),{headers:{Authorization:`token ${token}`}});
+    if(!res.ok){
+      if(el)el.textContent=res.status===404?'☁️ 저장된 데이터 없음 (처음 사용)':'❌ 불러오기 실패 (토큰 확인)';
+      return;
+    }
+    const j=await res.json();
+    const data=JSON.parse(decodeURIComponent(escape(atob(j.content))));
+    if(data.records){
+      records=data.records;
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+      updateHeader();renderHistory();
+      if(el)el.textContent=`✅ 기록 ${records.length}개 불러왔어요!`;
+      showToast(`기록 ${records.length}개 불러왔어요 ✅`);
+    }
+  }catch(e){if(el)el.textContent='❌ 오류: '+e.message;}
+}
 
 function selectStation(name){
   selStation=name;
@@ -305,7 +387,8 @@ function renderStats(){const now=new Date();const thisM=records.filter(r=>{const
 function switchChart(btn,type){curType=type;document.querySelectorAll('.chart-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const titles={price:'리터당 가격 추이',amount:'충전 금액 추이',liter:'충전량 추이'};document.getElementById('chart-title').textContent=titles[type];renderChart(type);}
 function renderChart(type){if(!records.length)return;const sorted=[...records].sort((a,b)=>new Date(a.date)-new Date(b.date));const labels=sorted.map(r=>r.date.slice(5));const data=sorted.map(r=>type==='price'?parseFloat(r.pricePerL.toFixed(1)):type==='amount'?r.amount:parseFloat(r.liter.toFixed(1)));const colors={price:'#1D9E75',amount:'#378ADD',liter:'#BA7517'};const c=colors[type];if(chart)chart.destroy();chart=new Chart(document.getElementById('mainChart'),{type:'line',data:{labels,datasets:[{data,borderColor:c,backgroundColor:c+'18',fill:true,tension:0.38,pointBackgroundColor:c,pointRadius:4,pointHoverRadius:6,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const v=ctx.parsed.y;if(type==='price')return `${v.toFixed(1)}원/L`;if(type==='amount')return `${v.toLocaleString()}원`;return `${v.toFixed(1)}L`;}}}},scales:{x:{grid:{display:false},ticks:{font:{size:11},color:'#a0a59e',autoSkip:false,maxRotation:45}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},color:'#a0a59e'}}}}});}
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/lpg/sw.js',{scope:'/lpg/'}));}
-updateHeader();
+// 토큰 있으면 자동으로 GitHub에서 불러오기
+if(getGhToken()){syncFromGitHub();}else{updateHeader();}
 </script>
 </body>
 </html>
