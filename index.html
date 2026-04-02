@@ -74,7 +74,7 @@
   .tip-card .tip-body { font-size: 12px; color: var(--accent-dark); line-height: 1.8; }
   .tip-card strong { font-weight: 700; }
   .history-list { display: flex; flex-direction: column; gap: 8px; }
-  .h-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+  .h-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
   .h-left .station { font-size: 14px; font-weight: 700; color: var(--text); }
   .h-left .memo { font-size: 11px; color: var(--text3); margin-top: 1px; }
   .h-left .date { font-size: 11px; color: var(--text2); margin-top: 3px; }
@@ -151,8 +151,8 @@
         <div class="form-group"><label>메모</label><input type="text" id="inp-memo" placeholder="예) 집 근처, 할인 행사 등"></div>
       </div>
       <div class="form-card">
-        <div class="form-card-title">주행 기록</div>
-        <div class="form-group"><label>계기판 주행거리 (km) — 충전 직전</label><input type="number" id="inp-odo" placeholder="예) 45230" step="1"></div>
+        <div class="form-card-title">주행 기록 (선택)</div>
+        <div class="form-group"><label>계기판 km (충전 직전)</label><input type="number" id="inp-odo" placeholder="예) 45230" step="1"></div>
         <div class="form-row">
           <div class="form-group"><label>출발지</label><input type="text" id="inp-from" placeholder="예) 대전"></div>
           <div class="form-group"><label>목적지</label><input type="text" id="inp-to" placeholder="예) 서울"></div>
@@ -170,15 +170,8 @@
     </div>
     <div id="tab-stats" class="section">
       <div class="stats-grid" id="stats-grid"></div>
-      <div class="stats-grid" id="drive-grid" style="margin-top:0;"></div>
-      <div class="tip-card" id="saving-card" style="display:none;">
-        <div class="tip-title">💰 휘발유 대비 절약액</div>
-        <div class="tip-body" id="saving-body"></div>
-      </div>
-      <div class="chart-card" id="drive-calendar-card" style="display:none;">
-        <div class="chart-header"><span class="chart-title">📅 월별 주행거리</span></div>
-        <div id="drive-calendar" style="padding:0 4px 8px;"></div>
-      </div>
+      <div class="stats-grid" id="drive-grid"></div>
+      <div id="saving-wrap"></div>
       <div class="chart-card">
         <div class="chart-header">
           <span class="chart-title" id="chart-title">리터당 가격 추이</span>
@@ -186,7 +179,6 @@
             <button class="chart-btn active" onclick="switchChart(this,'price')">단가</button>
             <button class="chart-btn" onclick="switchChart(this,'amount')">금액</button>
             <button class="chart-btn" onclick="switchChart(this,'liter')">충전량</button>
-            <button class="chart-btn" onclick="switchChart(this,'drive')">주행</button>
           </div>
         </div>
         <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
@@ -415,51 +407,36 @@ function renderHistory(){
     if(prev){const diff=r.pricePerL-prev.pricePerL;if(diff>0.5)badge=`<span class="badge badge-up">▲${diff.toFixed(1)}</span>`;else if(diff<-0.5)badge=`<span class="badge badge-dn">▼${Math.abs(diff).toFixed(1)}</span>`;}
     // 주행거리 계산
     let driveKm=null;
-    if(r.odo&&prev?.odo&&r.odo>prev.odo) driveKm=r.odo-prev.odo;
-    const hasExtra=(r.from||r.to||driveKm);
-    const extraId='extra-'+r.id;
-    // 펼치기 버튼 (경로/주행 있을 때만)
-    const extraBtn=hasExtra?`<button onclick="toggleExtra('${extraId}')" style="background:none;border:none;font-size:11px;color:var(--accent);cursor:pointer;padding:2px 0;margin-top:2px;">상세 ▾</button>`:'';
-    // 펼쳐지는 내용
+    if(r.odo&&prev&&prev.odo&&r.odo>prev.odo) driveKm=r.odo-prev.odo;
+    const hasExtra=!!(r.from||r.to||driveKm);
+    const eid='ex'+r.id;
     let extraHTML='';
     if(hasExtra){
       const kmL=(driveKm&&r.liter>0)?(driveKm/r.liter).toFixed(1):null;
-      extraHTML=`<div id="${extraId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
-        ${(r.from||r.to)?`<div style="font-size:12px;color:var(--text2);margin-bottom:3px;">📍 ${r.from||'?'} → ${r.to||'?'}</div>`:''}
-        ${driveKm?`<div style="font-size:12px;color:var(--accent);">🛣️ ${driveKm.toLocaleString()}km 주행${kmL?` · ${kmL}km/L`:''}</div>`:''}
-      </div>`;
+      extraHTML=`<div id="${eid}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);line-height:1.8;">
+        ${(r.from||r.to)?`📍 ${r.from||'?'} → ${r.to||'?'}<br>`:''}
+        ${driveKm?`🛣️ ${driveKm.toLocaleString()}km${kmL?' · '+kmL+'km/L':''}`:''}</div>`;
     }
-    html+=`<div class="h-item" style="flex-direction:column;align-items:stretch;">
-      <div style="display:flex;align-items:flex-start;">
-        <div class="h-left" style="flex:1;">
-          <div class="station">${r.station}</div>
-          ${r.memo?`<div class="memo">${r.memo}</div>`:''}
-          <div class="date">${r.date}</div>
-          ${extraBtn}
-        </div>
-        <div class="h-right">
-          <div class="amount">${r.amount.toLocaleString()}원${badge}</div>
-          <div class="detail">${r.liter.toFixed(1)}L 충전</div>
-          <div class="pprice">${r.pricePerL.toFixed(1)}원/L</div>
-        </div>
-        <div class="h-actions">
-          <button class="edit-btn" onclick="openEditModal(${r.id})">✏️</button>
-          <button class="del-btn" onclick="delRecord(${r.id})">✕</button>
-        </div>
+    html+=`<div class="h-item">
+      <div class="h-left">
+        <div class="station">${r.station}</div>
+        ${r.memo?`<div class="memo">${r.memo}</div>`:''}
+        <div class="date">${r.date}</div>
+        ${hasExtra?`<button onclick="var e=document.getElementById('${eid}');e.style.display=e.style.display==='none'?'block':'none';this.textContent=e.style.display==='none'?'상세 ▾':'상세 ▴'" style="background:none;border:none;font-size:11px;color:var(--accent);cursor:pointer;padding:2px 0;margin-top:2px;">상세 ▾</button>`:''}
+      </div>
+      <div class="h-right">
+        <div class="amount">${r.amount.toLocaleString()}원${badge}</div>
+        <div class="detail">${r.liter.toFixed(1)}L 충전</div>
+        <div class="pprice">${r.pricePerL.toFixed(1)}원/L</div>
+      </div>
+      <div class="h-actions">
+        <button class="edit-btn" onclick="openEditModal(${r.id})">✏️</button>
+        <button class="del-btn" onclick="delRecord(${r.id})">✕</button>
       </div>
       ${extraHTML}
     </div>`;
   });
   el.innerHTML=html;
-}
-
-function toggleExtra(id){
-  const el=document.getElementById(id);
-  if(!el)return;
-  const isOpen=el.style.display!=='none';
-  el.style.display=isOpen?'none':'block';
-  const btn=el.previousElementSibling?.querySelector('button[onclick*="toggleExtra"]')||el.parentElement.querySelector('button[onclick*="toggleExtra"]');
-  if(btn)btn.textContent=isOpen?'상세 ▾':'상세 ▴';
 }
 function delRecord(id){if(!confirm('이 기록을 삭제할까요?'))return;records=records.filter(r=>r.id!==id);saveData();updateHeader();renderHistory();showToast('삭제됐어요');}
 function renderStats(){
@@ -473,45 +450,27 @@ function renderStats(){
     <div class="stat-card"><div class="lbl">이번달 총 금액</div><div class="val">${(amtM/10000).toFixed(1)}<span class="unit">만원</span></div></div>
     <div class="stat-card"><div class="lbl">평균 단가</div><div class="val">${Math.round(avgP)}<span class="unit">원/L</span></div></div>
     <div class="stat-card"><div class="lbl">전체 충전량</div><div class="val">${Math.round(totalL)}<span class="unit">L</span></div></div>`;
-
   // 주행 통계
   const sorted=[...records].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const driveData=[];
+  const drives=[];
   for(let i=1;i<sorted.length;i++){
-    const r=sorted[i],prev=sorted[i-1];
-    if(r.odo&&prev.odo&&r.odo>prev.odo){
-      const km=r.odo-prev.odo;
-      const kmL=r.liter>0?km/r.liter:0;
-      driveData.push({date:r.date,km,kmL,liter:r.liter});
-    }
+    const r=sorted[i],p=sorted[i-1];
+    if(r.odo&&p.odo&&r.odo>p.odo) drives.push({km:r.odo-p.odo,liter:r.liter});
   }
-  if(driveData.length){
-    const avgKm=Math.round(driveData.reduce((s,d)=>s+d.km,0)/driveData.length);
-    const avgKmL=(driveData.reduce((s,d)=>s+d.kmL,0)/driveData.length).toFixed(1);
-    const totalKm=driveData.reduce((s,d)=>s+d.km,0);
+  if(drives.length){
+    const avgKm=Math.round(drives.reduce((s,d)=>s+d.km,0)/drives.length);
+    const avgKmL=(drives.reduce((s,d)=>s+(d.liter>0?d.km/d.liter:0),0)/drives.length).toFixed(1);
+    const totalKm=drives.reduce((s,d)=>s+d.km,0);
     document.getElementById('drive-grid').innerHTML=`
-      <div class="stat-card"><div class="lbl">평균 주행거리</div><div class="val">${avgKm}<span class="unit">km/충전</span></div></div>
+      <div class="stat-card"><div class="lbl">평균 주행거리</div><div class="val">${avgKm}<span class="unit">km</span></div></div>
       <div class="stat-card accent"><div class="lbl">평균 연비</div><div class="val">${avgKmL}<span class="unit">km/L</span></div></div>
       <div class="stat-card"><div class="lbl">총 주행거리</div><div class="val">${totalKm.toLocaleString()}<span class="unit">km</span></div></div>`;
-
-    // 휘발유 절약액 (휘발유 평균 1,700원/L 기준)
-    const GAS_PRICE=1700;
-    const savedPerL=GAS_PRICE-avgP;
-    const totalSaved=Math.round(savedPerL*totalL);
-    document.getElementById('saving-card').style.display='block';
-    document.getElementById('saving-body').innerHTML=
-      `LPG 평균 단가 <strong>${Math.round(avgP)}원/L</strong> vs 휘발유 ${GAS_PRICE}원/L<br>
-      리터당 <strong>${Math.round(savedPerL)}원</strong> 절약 · 총 <strong>${(totalSaved/10000).toFixed(1)}만원</strong> 아꼈어요! 🎉<br>
-      <span style="font-size:11px;color:var(--text3)">* 휘발유 ${GAS_PRICE}원/L 기준 추정치</span>`;
-
-    // 월별 주행거리 달력
-    renderDriveCalendar(driveData);
+    const saved=Math.round((1700-avgP)*totalL);
+    document.getElementById('saving-wrap').innerHTML=`<div class="tip-card"><div class="tip-title">💰 휘발유 대비 절약액</div><div class="tip-body">LPG 평균 <strong>${Math.round(avgP)}원/L</strong> vs 휘발유 1,700원/L<br>총 <strong>${(saved/10000).toFixed(1)}만원</strong> 절약했어요! 🎉</div></div>`;
   } else {
     document.getElementById('drive-grid').innerHTML='';
-    document.getElementById('saving-card').style.display='none';
-    document.getElementById('drive-calendar-card').style.display='none';
+    document.getElementById('saving-wrap').innerHTML='';
   }
-
   renderChart(curType);
   if(records.length>=2){
     const prices=records.map(r=>r.pricePerL);
@@ -521,66 +480,8 @@ function renderStats(){
     document.getElementById('tip-body').innerHTML=`최저가: <strong>${min.toFixed(1)}원/L</strong> — ${best.station} (${best.date})<br>최고가: <strong>${max.toFixed(1)}원/L</strong> — ${worst.station} (${worst.date})<br>최저가 주유소만 이용하면 1회 평균 <strong>${Math.round((max-min)*47)}원</strong> 절약 가능해요!`;
   }
 }
-
-function renderDriveCalendar(driveData){
-  const card=document.getElementById('drive-calendar-card');
-  const el=document.getElementById('drive-calendar');
-  card.style.display='block';
-  // 월별 그룹핑
-  const monthly={};
-  driveData.forEach(d=>{
-    const m=d.date.slice(0,7);
-    if(!monthly[m])monthly[m]=0;
-    monthly[m]+=d.km;
-  });
-  const months=Object.entries(monthly).sort((a,b)=>a[0].localeCompare(b[0]));
-  const maxKm=Math.max(...months.map(m=>m[1]));
-  el.innerHTML=months.map(([m,km])=>{
-    const[y,mo]=m.split('-');
-    const pct=Math.round(km/maxKm*100);
-    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <div style="font-size:12px;color:var(--text2);width:42px;flex-shrink:0;">${parseInt(mo)}월</div>
-      <div style="flex:1;background:var(--surface2);border-radius:6px;height:22px;overflow:hidden;">
-        <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:6px;display:flex;align-items:center;padding-left:8px;min-width:40px;">
-          <span style="font-size:11px;color:white;font-weight:700;">${km.toLocaleString()}km</span>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function switchChart(btn,type){
-  curType=type;
-  document.querySelectorAll('.chart-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  const titles={price:'리터당 가격 추이',amount:'충전 금액 추이',liter:'충전량 추이',drive:'충전간 주행거리'};
-  document.getElementById('chart-title').textContent=titles[type];
-  renderChart(type);
-}
-
-function renderChart(type){
-  if(!records.length)return;
-  const sorted=[...records].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  let labels,data;
-  if(type==='drive'){
-    // 주행거리 차트
-    const pairs=[];
-    for(let i=1;i<sorted.length;i++){
-      const r=sorted[i],prev=sorted[i-1];
-      if(r.odo&&prev.odo&&r.odo>prev.odo)pairs.push({label:r.date.slice(5),km:r.odo-prev.odo});
-    }
-    if(!pairs.length){if(chart)chart.destroy();return;}
-    labels=pairs.map(p=>p.label);
-    data=pairs.map(p=>p.km);
-  } else {
-    labels=sorted.map(r=>r.date.slice(5));
-    data=sorted.map(r=>type==='price'?parseFloat(r.pricePerL.toFixed(1)):type==='amount'?r.amount:parseFloat(r.liter.toFixed(1)));
-  }
-  const colors={price:'#1D9E75',amount:'#378ADD',liter:'#BA7517',drive:'#6366F1'};
-  const c=colors[type];
-  if(chart)chart.destroy();
-  chart=new Chart(document.getElementById('mainChart'),{type:'line',data:{labels,datasets:[{data,borderColor:c,backgroundColor:c+'18',fill:true,tension:0.38,pointBackgroundColor:c,pointRadius:4,pointHoverRadius:6,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const v=ctx.parsed.y;if(type==='price')return `${v.toFixed(1)}원/L`;if(type==='amount')return `${v.toLocaleString()}원`;if(type==='drive')return `${v.toLocaleString()}km`;return `${v.toFixed(1)}L`;}}}}},scales:{x:{grid:{display:false},ticks:{font:{size:11},color:'#a0a59e',autoSkip:false,maxRotation:45}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},color:'#a0a59e'}}}}});
-}
+function switchChart(btn,type){curType=type;document.querySelectorAll('.chart-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const titles={price:'리터당 가격 추이',amount:'충전 금액 추이',liter:'충전량 추이'};document.getElementById('chart-title').textContent=titles[type];renderChart(type);}
+function renderChart(type){if(!records.length)return;const sorted=[...records].sort((a,b)=>new Date(a.date)-new Date(b.date));const labels=sorted.map(r=>r.date.slice(5));const data=sorted.map(r=>type==='price'?parseFloat(r.pricePerL.toFixed(1)):type==='amount'?r.amount:parseFloat(r.liter.toFixed(1)));const colors={price:'#1D9E75',amount:'#378ADD',liter:'#BA7517'};const c=colors[type];if(chart)chart.destroy();chart=new Chart(document.getElementById('mainChart'),{type:'line',data:{labels,datasets:[{data,borderColor:c,backgroundColor:c+'18',fill:true,tension:0.38,pointBackgroundColor:c,pointRadius:4,pointHoverRadius:6,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const v=ctx.parsed.y;if(type==='price')return `${v.toFixed(1)}원/L`;if(type==='amount')return `${v.toLocaleString()}원`;return `${v.toFixed(1)}L`;}}}},scales:{x:{grid:{display:false},ticks:{font:{size:11},color:'#a0a59e',autoSkip:false,maxRotation:45}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},color:'#a0a59e'}}}}});}
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/lpg/sw.js',{scope:'/lpg/'}));}
 // 토큰 있으면 자동으로 GitHub에서 불러오기
 if(getGhToken()){syncFromGitHub();}else{updateHeader();}
