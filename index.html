@@ -469,23 +469,19 @@ function renderHistory(){
   const el=document.getElementById('history-list');
   if(!records.length){el.innerHTML='<div class="empty">아직 충전 기록이 없어요.<br>첫 번째 충전을 기록해보세요!</div>';return;}
 
-  // 충전 기록 날짜순 정렬 (오래된 것부터)
   const sorted=[...records].sort((a,b)=>new Date(a.date)-new Date(b.date));
 
-  // 각 충전 카드에 해당 주행 기록 묶기
-  // 충전i ~ 충전i+1 사이 날짜의 주행 기록을 충전i에 붙임
   const cards=sorted.map((r,i)=>{
     const nextCharge=sorted[i+1];
     const relatedDrives=drives.filter(d=>{
-      if(d.date < r.date) return false;
-      if(nextCharge && d.date >= nextCharge.date) return false;
+      if(d.date < r.date) return false;  // 이 충전 이전 날짜 제외
+      if(nextCharge && d.date >= nextCharge.date) return false;  // 다음 충전 당일부터 제외
       return true;
     }).sort((a,b)=>new Date(a.date)-new Date(b.date));
     return {record:r, relatedDrives};
   });
 
-  // 화면엔 최신순으로 표시
-  cards.reverse();
+  cards.reverse(); // 최신순
 
   let html='';let lastMonth='';
   cards.forEach(({record:r, relatedDrives},i)=>{
@@ -496,27 +492,27 @@ function renderHistory(){
     let badge='';
     if(prev){const diff=r.pricePerL-prev.pricePerL;if(diff>0.5)badge=`<span class="badge badge-up">▲${diff.toFixed(1)}</span>`;else if(diff<-0.5)badge=`<span class="badge badge-dn">▼${Math.abs(diff).toFixed(1)}</span>`;}
 
-    // 주행 기록 HTML
     let driveHTML='';
     if(relatedDrives.length){
       const totalKm=relatedDrives.reduce((s,d)=>s+d.km,0);
-      const driveRows=relatedDrives.map(d=>`
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);">
-          <div>
-            <div style="font-size:12px;color:var(--text2);">${d.date.slice(5).replace('-','/')} ${(d.from||d.to)?`${d.from||'?'} → ${d.to||'?'}`:''}</div>
+      driveHTML=`
+        <div style="width:100%;margin-top:10px;padding-top:10px;border-top:1.5px dashed var(--border);">
+          ${relatedDrives.map(d=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
+              <div style="font-size:12px;color:var(--text2);">
+                ${d.date.slice(5).replace('-','/')}
+                ${(d.from||d.to)?` &nbsp;${d.from||'?'} → ${d.to||'?'}`:''}
+              </div>
+              <div style="font-size:13px;font-weight:700;color:var(--accent);">${d.km.toLocaleString()}km</div>
+            </div>`).join('')}
+          <div style="display:flex;justify-content:space-between;padding-top:7px;">
+            <div style="font-size:11px;color:var(--text3);">이 충전으로 총</div>
+            <div style="font-size:12px;font-weight:700;color:var(--accent-dark);">${totalKm.toLocaleString()}km 주행</div>
           </div>
-          <div style="font-size:13px;font-weight:700;color:var(--accent);">${d.km.toLocaleString()}km</div>
-        </div>`).join('');
-      driveHTML=`<div style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border);">
-        ${driveRows}
-        <div style="display:flex;justify-content:space-between;padding-top:6px;">
-          <div style="font-size:11px;color:var(--text3);">총 주행거리</div>
-          <div style="font-size:12px;font-weight:700;color:var(--accent-dark);">${totalKm.toLocaleString()}km</div>
-        </div>
-      </div>`;
+        </div>`;
     }
 
-    html+=`<div class="h-item" style="flex-wrap:wrap;">
+    html+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;">
       <div class="h-left" style="flex:1;">
         <div class="station">${r.station}</div>
         ${r.memo?`<div class="memo">${r.memo}</div>`:''}
@@ -531,7 +527,7 @@ function renderHistory(){
         <button class="edit-btn" onclick="openEditModal(${r.id})">✏️</button>
         <button class="del-btn" onclick="delRecord(${r.id})">✕</button>
       </div>
-      ${driveHTML?`<div style="width:100%;">${driveHTML}</div>`:''}
+      ${driveHTML}
     </div>`;
   });
   el.innerHTML=html;
