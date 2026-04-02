@@ -127,6 +127,7 @@
   </div>
   <nav class="nav">
     <button class="nav-btn active" onclick="switchTab('add')">충전 입력</button>
+    <button class="nav-btn" onclick="switchTab('drive')">주행 기록</button>
     <button class="nav-btn" onclick="switchTab('stats')">통계</button>
     <button class="nav-btn" onclick="switchTab('history')">내역</button>
     <button class="nav-btn" onclick="switchTab('settings')">설정</button>
@@ -151,14 +152,6 @@
         <div class="form-group"><label>메모</label><input type="text" id="inp-memo" placeholder="예) 집 근처, 할인 행사 등"></div>
       </div>
       <div class="form-card">
-        <div class="form-card-title">주행 기록 (선택)</div>
-        <div class="form-group"><label>계기판 km (충전 직전)</label><input type="number" id="inp-odo" placeholder="예) 45230" step="1"></div>
-        <div class="form-row">
-          <div class="form-group"><label>출발지</label><input type="text" id="inp-from" placeholder="예) 대전"></div>
-          <div class="form-group"><label>목적지</label><input type="text" id="inp-to" placeholder="예) 서울"></div>
-        </div>
-      </div>
-      <div class="form-card">
         <div class="form-card-title">충전 내역</div>
         <div class="form-row">
           <div class="form-group"><label>충전 금액 (원)</label><input type="number" id="inp-amount" placeholder="50000"></div>
@@ -168,10 +161,27 @@
       </div>
       <button class="save-btn" onclick="saveRecord()">충전 기록 저장</button>
     </div>
+    <div id="tab-drive" class="section">
+      <div class="form-card">
+        <div class="form-card-title">주행 기록 추가</div>
+        <div class="form-group"><label>날짜</label><input type="date" id="drv-date"></div>
+        <div class="form-row">
+          <div class="form-group"><label>출발지</label><input type="text" id="drv-from" placeholder="예) 대전"></div>
+          <div class="form-group"><label>목적지</label><input type="text" id="drv-to" placeholder="예) 서울"></div>
+        </div>
+        <div class="form-group"><label>주행거리 (km)</label><input type="number" id="drv-km" placeholder="예) 350" step="1"></div>
+      </div>
+      <button class="save-btn" onclick="saveDrive()">주행 기록 저장</button>
+      <div class="history-list" id="drive-list" style="margin-top:16px;"></div>
+    </div>
     <div id="tab-stats" class="section">
       <div class="stats-grid" id="stats-grid"></div>
       <div class="stats-grid" id="drive-grid"></div>
       <div id="saving-wrap"></div>
+      <div class="chart-card" id="cal-card" style="display:none;">
+        <div class="chart-header"><span class="chart-title">월별 주행거리</span></div>
+        <div id="drive-cal" style="padding:4px 0 8px;"></div>
+      </div>
       <div class="chart-card">
         <div class="chart-header">
           <span class="chart-title" id="chart-title">리터당 가격 추이</span>
@@ -256,11 +266,12 @@ function saveData(){
 }
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200);}
 function switchTab(t){
-  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['add','stats','history','settings'][i]===t));
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['add','drive','stats','history','settings'][i]===t));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   if(t==='stats')renderStats();
   if(t==='history')renderHistory();
+  if(t==='drive')renderDriveList();
   if(t==='settings'){
     const el=document.getElementById('syncStatus');
     if(el)el.textContent=getGhToken()?'✅ 토큰 설정됨 · 자동 저장 활성화':'⚠️ 토큰 없음 · 데이터가 언제든 삭제될 수 있어요';
@@ -337,6 +348,7 @@ function backupData(){const data={records,exportedAt:new Date().toISOString()};c
 function restoreData(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const data=JSON.parse(ev.target.result);if(!data.records){showToast('올바른 백업 파일이 아니에요');return;}if(!confirm('현재 데이터를 백업으로 교체할까요?'))return;records=data.records;saveData();updateHeader();showToast('복원 완료!');}catch{showToast('파일을 읽을 수 없어요');}};reader.readAsText(file);e.target.value='';}
 
 document.getElementById('inp-date').value=new Date().toISOString().split('T')[0];
+document.getElementById('drv-date').value=new Date().toISOString().split('T')[0];
 ['inp-amount','inp-price'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
   const a=parseFloat(document.getElementById('inp-amount').value);
   const p=parseFloat(document.getElementById('inp-price').value);
@@ -354,17 +366,76 @@ function saveRecord(){
   const price=parseFloat(document.getElementById('inp-price').value);
   const liter=parseFloat(document.getElementById('inp-liter').value);
   const memo=document.getElementById('inp-memo').value.trim();
-  const odo=parseFloat(document.getElementById('inp-odo').value)||null;
-  const from=document.getElementById('inp-from').value.trim();
-  const to=document.getElementById('inp-to').value.trim();
   if(!date||!amount||!price){showToast('날짜, 금액, 리터당 가격을 입력해주세요');return;}
   if(!selStation){showToast('주유소를 선택해주세요');return;}
-  records.unshift({id:Date.now(),date,station:selStation,amount,liter,pricePerL:price,memo,odo,from,to});
+  records.unshift({id:Date.now(),date,station:selStation,amount,liter,pricePerL:price,memo});
   saveData();
-  ['inp-amount','inp-liter','inp-price','inp-memo','inp-odo','inp-from','inp-to'].forEach(id=>document.getElementById(id).value='');
+  ['inp-amount','inp-liter','inp-price','inp-memo'].forEach(id=>document.getElementById(id).value='');
   selStation='';
   document.querySelectorAll('#station-tabs .station-tab').forEach(b=>b.classList.remove('active'));
   updateHeader();showToast('충전 기록이 저장됐어요!');switchTab('history');
+}
+
+// ─── 주행 기록 ──────────────────────────────────────────────
+let drives=JSON.parse(localStorage.getItem('lpg_drives')||'[]');
+function saveDrives(){localStorage.setItem('lpg_drives',JSON.stringify(drives));githubSaveDrives();}
+
+function saveDrive(){
+  const date=document.getElementById('drv-date').value;
+  const from=document.getElementById('drv-from').value.trim();
+  const to=document.getElementById('drv-to').value.trim();
+  const km=parseFloat(document.getElementById('drv-km').value);
+  if(!date||!km){showToast('날짜와 주행거리를 입력해주세요');return;}
+  drives.unshift({id:Date.now(),date,from,to,km});
+  saveDrives();
+  ['drv-from','drv-to','drv-km'].forEach(id=>document.getElementById(id).value='');
+  renderDriveList();showToast('주행 기록이 저장됐어요!');
+}
+
+function renderDriveList(){
+  const el=document.getElementById('drive-list');
+  if(!drives.length){el.innerHTML='<div class="empty">아직 주행 기록이 없어요.</div>';return;}
+  const sorted=[...drives].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  let html='';let lastMonth='';
+  sorted.forEach(d=>{
+    const m=d.date.slice(0,7);
+    if(m!==lastMonth){const[y,mo]=m.split('-');html+=`<div class="month-label">${y}년 ${parseInt(mo)}월</div>`;lastMonth=m;}
+    html+=`<div class="h-item">
+      <div class="h-left">
+        ${(d.from||d.to)?`<div class="station">${d.from||'?'} → ${d.to||'?'}</div>`:'<div class="station">주행 기록</div>'}
+        <div class="date">${d.date}</div>
+      </div>
+      <div class="h-right">
+        <div class="amount">${d.km.toLocaleString()}<span style="font-size:12px;font-weight:400;color:var(--text2);">km</span></div>
+      </div>
+      <div class="h-actions">
+        <button class="del-btn" onclick="delDrive(${d.id})">✕</button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+function delDrive(id){
+  if(!confirm('이 주행 기록을 삭제할까요?'))return;
+  drives=drives.filter(d=>d.id!==id);
+  saveDrives();renderDriveList();showToast('삭제됐어요');
+}
+
+let _ghDriveTimer=null;
+async function githubSaveDrives(){
+  const token=getGhToken();if(!token)return;
+  clearTimeout(_ghDriveTimer);
+  _ghDriveTimer=setTimeout(async()=>{
+    try{
+      const GH_DRIVE=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/data/lpg-drives.json`;
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify({drives,exportedAt:new Date().toISOString()}))));
+      let sha='';
+      try{const r=await fetch(GH_DRIVE,{headers:{Authorization:`token ${token}`}});if(r.ok){const j=await r.json();sha=j.sha;}}catch(e){}
+      const body={message:'sync: drive data',content};if(sha)body.sha=sha;
+      await fetch(GH_DRIVE,{method:'PUT',headers:{Authorization:`token ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    }catch(e){}
+  },1000);
 }
 
 function updateHeader(){const total=records.reduce((s,r)=>s+r.amount,0);const avgP=records.length?records.reduce((s,r)=>s+r.pricePerL,0)/records.length:0;document.getElementById('hs-cnt').innerHTML=`${records.length}<span class="hu">회</span>`;document.getElementById('hs-avg').innerHTML=`${Math.round(avgP)}<span class="hu">원/L</span>`;document.getElementById('hs-total').innerHTML=`${(total/10000).toFixed(1)}<span class="hu">만원</span>`;document.getElementById('hdr-sub').textContent=`총 ${records.length}회 충전 기록`;}
@@ -450,26 +521,37 @@ function renderStats(){
     <div class="stat-card"><div class="lbl">이번달 총 금액</div><div class="val">${(amtM/10000).toFixed(1)}<span class="unit">만원</span></div></div>
     <div class="stat-card"><div class="lbl">평균 단가</div><div class="val">${Math.round(avgP)}<span class="unit">원/L</span></div></div>
     <div class="stat-card"><div class="lbl">전체 충전량</div><div class="val">${Math.round(totalL)}<span class="unit">L</span></div></div>`;
-  // 주행 통계
-  const sorted=[...records].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const drives=[];
-  for(let i=1;i<sorted.length;i++){
-    const r=sorted[i],p=sorted[i-1];
-    if(r.odo&&p.odo&&r.odo>p.odo) drives.push({km:r.odo-p.odo,liter:r.liter});
-  }
   if(drives.length){
-    const avgKm=Math.round(drives.reduce((s,d)=>s+d.km,0)/drives.length);
-    const avgKmL=(drives.reduce((s,d)=>s+(d.liter>0?d.km/d.liter:0),0)/drives.length).toFixed(1);
     const totalKm=drives.reduce((s,d)=>s+d.km,0);
+    const avgKm=Math.round(totalKm/drives.length);
+    const avgKmL=totalL>0?(totalKm/totalL).toFixed(1):'-';
     document.getElementById('drive-grid').innerHTML=`
-      <div class="stat-card"><div class="lbl">평균 주행거리</div><div class="val">${avgKm}<span class="unit">km</span></div></div>
+      <div class="stat-card"><div class="lbl">총 주행거리</div><div class="val">${totalKm.toLocaleString()}<span class="unit">km</span></div></div>
       <div class="stat-card accent"><div class="lbl">평균 연비</div><div class="val">${avgKmL}<span class="unit">km/L</span></div></div>
-      <div class="stat-card"><div class="lbl">총 주행거리</div><div class="val">${totalKm.toLocaleString()}<span class="unit">km</span></div></div>`;
+      <div class="stat-card"><div class="lbl">평균 주행거리</div><div class="val">${avgKm}<span class="unit">km</span></div></div>`;
     const saved=Math.round((1700-avgP)*totalL);
     document.getElementById('saving-wrap').innerHTML=`<div class="tip-card"><div class="tip-title">💰 휘발유 대비 절약액</div><div class="tip-body">LPG 평균 <strong>${Math.round(avgP)}원/L</strong> vs 휘발유 1,700원/L<br>총 <strong>${(saved/10000).toFixed(1)}만원</strong> 절약했어요! 🎉</div></div>`;
+    const monthly={};
+    drives.forEach(d=>{const m=d.date.slice(0,7);if(!monthly[m])monthly[m]=0;monthly[m]+=d.km;});
+    const months=Object.entries(monthly).sort((a,b)=>a[0].localeCompare(b[0]));
+    const maxKm=Math.max(...months.map(m=>m[1]));
+    document.getElementById('cal-card').style.display='block';
+    document.getElementById('drive-cal').innerHTML=months.map(([m,km])=>{
+      const mo=parseInt(m.split('-')[1]);
+      const pct=Math.round(km/maxKm*100);
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div style="font-size:11px;color:var(--text2);width:28px;flex-shrink:0;">${mo}월</div>
+        <div style="flex:1;background:var(--surface2);border-radius:4px;height:20px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:4px;display:flex;align-items:center;padding-left:7px;min-width:44px;">
+            <span style="font-size:10px;color:white;font-weight:700;">${km.toLocaleString()}km</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
   } else {
     document.getElementById('drive-grid').innerHTML='';
     document.getElementById('saving-wrap').innerHTML='';
+    document.getElementById('cal-card').style.display='none';
   }
   renderChart(curType);
   if(records.length>=2){
