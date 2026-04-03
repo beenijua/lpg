@@ -172,7 +172,12 @@
         <div class="form-group"><label>주행거리 (km)</label><input type="number" id="drv-km" placeholder="예) 350" step="1"></div>
       </div>
       <button class="save-btn" onclick="saveDrive()">주행 기록 저장</button>
-      <div class="history-list" id="drive-list" style="margin-top:16px;"></div>
+      <!-- 월 탭 -->
+      <div id="drv-month-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:16px;margin-bottom:8px;"></div>
+      <!-- 주차 탭 -->
+      <div id="drv-week-tabs" style="display:flex;gap:6px;margin-bottom:12px;"></div>
+      <!-- 목록 -->
+      <div class="history-list" id="drive-list"></div>
     </div>
     <div id="tab-stats" class="section">
       <div class="stats-grid" id="stats-grid"></div>
@@ -392,15 +397,68 @@ function saveDrive(){
   renderDriveList();showToast('주행 기록이 저장됐어요!');
 }
 
+let drvSelMonth='';
+let drvSelWeek=1;
+
+function getWeekOfMonth(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  return Math.ceil(d.getDate()/7);
+}
+
 function renderDriveList(){
-  const el=document.getElementById('drive-list');
-  if(!drives.length){el.innerHTML='<div class="empty">아직 주행 기록이 없어요.</div>';return;}
-  const sorted=[...drives].sort((a,b)=>new Date(b.date)-new Date(a.date));
-  let html='';let lastMonth='';
-  sorted.forEach(d=>{
-    const m=d.date.slice(0,7);
-    if(m!==lastMonth){const[y,mo]=m.split('-');html+=`<div class="month-label">${y}년 ${parseInt(mo)}월</div>`;lastMonth=m;}
-    html+=`<div class="h-item">
+  if(!drives.length){
+    document.getElementById('drv-month-tabs').innerHTML='';
+    document.getElementById('drv-week-tabs').innerHTML='';
+    document.getElementById('drive-list').innerHTML='<div class="empty">아직 주행 기록이 없어요.</div>';
+    return;
+  }
+
+  // 월 목록 추출
+  const months=[...new Set(drives.map(d=>d.date.slice(0,7)))].sort((a,b)=>b.localeCompare(a));
+  if(!drvSelMonth||!months.includes(drvSelMonth)) drvSelMonth=months[0];
+
+  // 월 탭 렌더
+  const mTabEl=document.getElementById('drv-month-tabs');
+  mTabEl.innerHTML=months.map(m=>{
+    const [y,mo]=m.split('-');
+    const active=m===drvSelMonth;
+    return `<button onclick="drvSelMonth='${m}';drvSelWeek=1;renderDriveList();"
+      style="padding:6px 14px;border-radius:20px;border:1.5px solid ${active?'var(--accent)':'var(--border)'};
+      background:${active?'var(--accent)':'transparent'};color:${active?'white':'var(--text2)'};
+      font-size:12px;font-weight:500;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">
+      ${parseInt(mo)}월
+    </button>`;
+  }).join('');
+
+  // 선택된 월의 주행 기록
+  const monthDrives=drives.filter(d=>d.date.slice(0,7)===drvSelMonth)
+    .sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  // 주차 목록 추출
+  const weeks=[...new Set(monthDrives.map(d=>getWeekOfMonth(d.date)))].sort((a,b)=>a-b);
+  if(!weeks.includes(drvSelWeek)) drvSelWeek=weeks[0];
+
+  // 주차 탭 렌더
+  const wTabEl=document.getElementById('drv-week-tabs');
+  wTabEl.innerHTML=weeks.map(w=>{
+    const active=w===drvSelWeek;
+    return `<button onclick="drvSelWeek=${w};renderDriveList();"
+      style="padding:5px 12px;border-radius:20px;border:1.5px solid ${active?'var(--accent-dark)':'var(--border)'};
+      background:${active?'var(--accent-light)':'transparent'};color:${active?'var(--accent-dark)':'var(--text2)'};
+      font-size:12px;font-weight:500;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">
+      ${w}주차
+    </button>`;
+  }).join('');
+
+  // 해당 주차 기록
+  const weekDrives=monthDrives.filter(d=>getWeekOfMonth(d.date)===drvSelWeek);
+  const totalKm=weekDrives.reduce((s,d)=>s+d.km,0);
+
+  const listEl=document.getElementById('drive-list');
+  if(!weekDrives.length){listEl.innerHTML='<div class="empty">이 주차에 기록이 없어요.</div>';return;}
+
+  listEl.innerHTML=weekDrives.map(d=>`
+    <div class="h-item">
       <div class="h-left">
         ${(d.from||d.to)?`<div class="station">${d.from||'?'} → ${d.to||'?'}</div>`:'<div class="station">주행 기록</div>'}
         <div class="date">${d.date}</div>
@@ -411,9 +469,11 @@ function renderDriveList(){
       <div class="h-actions">
         <button class="del-btn" onclick="delDrive(${d.id})">✕</button>
       </div>
+    </div>`).join('')
+  +`<div style="background:var(--accent-light);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;margin-top:4px;">
+      <div style="font-size:12px;color:var(--accent-dark);font-weight:600;">${drvSelWeek}주차 합계</div>
+      <div style="font-size:14px;font-weight:700;color:var(--accent-dark);">${totalKm.toLocaleString()}km</div>
     </div>`;
-  });
-  el.innerHTML=html;
 }
 
 function delDrive(id){
@@ -474,14 +534,14 @@ function renderHistory(){
   const cards=sorted.map((r,i)=>{
     const nextCharge=sorted[i+1];
     const relatedDrives=drives.filter(d=>{
-      if(d.date < r.date) return false;  // 이 충전 이전 날짜 제외
-      if(nextCharge && d.date >= nextCharge.date) return false;  // 다음 충전 당일부터 제외
+      if(d.date < r.date) return false;
+      if(nextCharge && d.date >= nextCharge.date) return false;
       return true;
     }).sort((a,b)=>new Date(a.date)-new Date(b.date));
     return {record:r, relatedDrives};
   });
 
-  cards.reverse(); // 최신순
+  cards.reverse();
 
   let html='';let lastMonth='';
   cards.forEach(({record:r, relatedDrives},i)=>{
@@ -492,27 +552,29 @@ function renderHistory(){
     let badge='';
     if(prev){const diff=r.pricePerL-prev.pricePerL;if(diff>0.5)badge=`<span class="badge badge-up">▲${diff.toFixed(1)}</span>`;else if(diff<-0.5)badge=`<span class="badge badge-dn">▼${Math.abs(diff).toFixed(1)}</span>`;}
 
+    const hasDrives=relatedDrives.length>0;
+    const totalKm=hasDrives?relatedDrives.reduce((s,d)=>s+d.km,0):0;
+    const did='drv-'+r.id;
+
     let driveHTML='';
-    if(relatedDrives.length){
-      const totalKm=relatedDrives.reduce((s,d)=>s+d.km,0);
-      driveHTML=`
-        <div style="width:100%;margin-top:10px;padding-top:10px;border-top:1.5px dashed var(--border);">
-          ${relatedDrives.map(d=>`
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
-              <div style="font-size:12px;color:var(--text2);">
-                ${d.date.slice(5).replace('-','/')}
-                ${(d.from||d.to)?` &nbsp;${d.from||'?'} → ${d.to||'?'}`:''}
-              </div>
-              <div style="font-size:13px;font-weight:700;color:var(--accent);">${d.km.toLocaleString()}km</div>
-            </div>`).join('')}
-          <div style="display:flex;justify-content:space-between;padding-top:7px;">
-            <div style="font-size:11px;color:var(--text3);">이 충전으로 총</div>
-            <div style="font-size:12px;font-weight:700;color:var(--accent-dark);">${totalKm.toLocaleString()}km 주행</div>
-          </div>
-        </div>`;
+    if(hasDrives){
+      driveHTML=`<div id="${did}" style="display:none;width:100%;margin-top:10px;padding-top:10px;border-top:1.5px dashed var(--border);">
+        ${relatedDrives.map(d=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
+            <div style="font-size:12px;color:var(--text2);">${d.date.slice(5).replace('-','/')}${(d.from||d.to)?` &nbsp;${d.from||'?'} → ${d.to||'?'}`:''}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--accent);">${d.km.toLocaleString()}km</div>
+          </div>`).join('')}
+        <div style="display:flex;justify-content:space-between;padding-top:7px;">
+          <div style="font-size:11px;color:var(--text3);">이 충전으로 총</div>
+          <div style="font-size:12px;font-weight:700;color:var(--accent-dark);">${totalKm.toLocaleString()}km 주행</div>
+        </div>
+      </div>`;
     }
 
-    html+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;">
+    // 카드 탭하면 펼치기 (주행 기록 있을 때만)
+    const cardClick=hasDrives?`onclick="var d=document.getElementById('${did}');var open=d.style.display!=='none';d.style.display=open?'none':'block';this.querySelector('.arr').textContent=open?'›':'‹';"style="cursor:pointer;"`:'' ;
+
+    html+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;" ${cardClick}>
       <div class="h-left" style="flex:1;">
         <div class="station">${r.station}</div>
         ${r.memo?`<div class="memo">${r.memo}</div>`:''}
@@ -524,8 +586,9 @@ function renderHistory(){
         <div class="pprice">${r.pricePerL.toFixed(1)}원/L</div>
       </div>
       <div class="h-actions">
-        <button class="edit-btn" onclick="openEditModal(${r.id})">✏️</button>
-        <button class="del-btn" onclick="delRecord(${r.id})">✕</button>
+        ${hasDrives?`<span class="arr" style="font-size:18px;color:var(--accent);margin-right:4px;">›</span>`:''}
+        <button class="edit-btn" onclick="event.stopPropagation();openEditModal(${r.id})">✏️</button>
+        <button class="del-btn" onclick="event.stopPropagation();delRecord(${r.id})">✕</button>
       </div>
       ${driveHTML}
     </div>`;
