@@ -172,10 +172,9 @@
         <div class="form-group"><label>주행거리 (km)</label><input type="number" id="drv-km" placeholder="예) 350" step="1"></div>
       </div>
       <button class="save-btn" onclick="saveDrive()">주행 기록 저장</button>
-      <div style="margin-top:14px;background:var(--accent-light);border-radius:12px;padding:12px 14px;border:1px solid rgba(29,158,117,.15);">
-        <div style="font-size:12px;color:var(--accent-dark);font-weight:600;margin-bottom:4px;">주행 기록은 내역 탭에서 확인해요</div>
-        <div style="font-size:12px;color:var(--accent-dark);">충전 카드를 탭하면 해당 충전 이후 주행 기록이 펼쳐져요 ›</div>
-      </div>
+      <div id="drv-month-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:16px;margin-bottom:8px;"></div>
+      <div id="drv-week-tabs" style="display:flex;gap:6px;margin-bottom:12px;"></div>
+      <div class="history-list" id="drive-list"></div>
     </div>
     <div id="tab-stats" class="section">
       <div class="stats-grid" id="stats-grid"></div>
@@ -227,24 +226,24 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<!-- 수정 모달 -->
-<div class="overlay hidden" id="edit-overlay">
-<div class="overlay hidden" id="edit-drive-overlay">
+<!-- 주행 기록 수정 모달 -->
+<div class="overlay hidden" id="drive-edit-overlay">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">주행 기록 수정</div>
-    <div class="form-group"><label>날짜</label><input type="date" id="edit-drv-date"></div>
+    <div class="form-group"><label>날짜</label><input type="date" id="dedit-date"></div>
     <div class="form-row">
-      <div class="form-group"><label>출발지</label><input type="text" id="edit-drv-from" placeholder="예) 대전"></div>
-      <div class="form-group"><label>목적지</label><input type="text" id="edit-drv-to" placeholder="예) 서울"></div>
+      <div class="form-group"><label>출발지</label><input type="text" id="dedit-from" placeholder="예) 대전"></div>
+      <div class="form-group"><label>목적지</label><input type="text" id="dedit-to" placeholder="예) 서울"></div>
     </div>
-    <div class="form-group"><label>주행거리 (km)</label><input type="number" id="edit-drv-km" step="1"></div>
+    <div class="form-group"><label>주행거리 (km)</label><input type="number" id="dedit-km" placeholder="예) 350" step="1"></div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeEditDriveModal()">취소</button>
-      <button class="btn-primary" onclick="saveEditDrive()">저장</button>
+      <button class="btn-secondary" onclick="closeDriveEditModal()">취소</button>
+      <button class="btn-primary" onclick="saveDriveEdit()">저장</button>
     </div>
   </div>
 </div>
+<div class="overlay hidden" id="edit-overlay">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">충전 기록 수정</div>
@@ -265,6 +264,11 @@
       <div class="form-group"><label>리터당 가격 (원/L)</label><input type="number" id="edit-price" step="0.1"></div>
     </div>
     <div class="form-group"><label>충전량 (자동 계산)</label><input type="number" id="edit-liter" readonly style="color:var(--accent-dark);font-weight:700;background:var(--accent-light);border-color:transparent;"></div>
+    <div class="form-group"><label>계기판 km (충전 직전)</label><input type="number" id="edit-odo" placeholder="예) 45230" step="1"></div>
+    <div class="form-row">
+      <div class="form-group"><label>출발지</label><input type="text" id="edit-from" placeholder="예) 대전"></div>
+      <div class="form-group"><label>목적지</label><input type="text" id="edit-to" placeholder="예) 서울"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeEditModal()">취소</button>
       <button class="btn-primary" onclick="saveEdit()">저장</button>
@@ -509,7 +513,7 @@ function renderDriveList(){
         <div class="amount">${d.km.toLocaleString()}<span style="font-size:12px;font-weight:400;color:var(--text2);">km</span></div>
       </div>
       <div class="h-actions">
-        <button class="edit-btn" onclick="openEditDriveModal(${d.id})">✏️</button>
+        <button class="edit-btn" onclick="openDriveEditModal(${d.id})">✏️</button>
         <button class="del-btn" onclick="delDrive(${d.id})">✕</button>
       </div>
     </div>`).join('')
@@ -525,29 +529,26 @@ function delDrive(id){
   saveDrives();renderDriveList();showToast('삭제됐어요');
 }
 
-let editDriveId=null;
-function openEditDriveModal(id){
+let driveEditId=null;
+function openDriveEditModal(id){
   const d=drives.find(x=>x.id===id);if(!d)return;
-  editDriveId=id;
-  document.getElementById('edit-drv-date').value=d.date;
-  document.getElementById('edit-drv-from').value=d.from||'';
-  document.getElementById('edit-drv-to').value=d.to||'';
-  document.getElementById('edit-drv-km').value=d.km;
-  document.getElementById('edit-drive-overlay').classList.remove('hidden');
+  driveEditId=id;
+  document.getElementById('dedit-date').value=d.date;
+  document.getElementById('dedit-from').value=d.from||'';
+  document.getElementById('dedit-to').value=d.to||'';
+  document.getElementById('dedit-km').value=d.km;
+  document.getElementById('drive-edit-overlay').classList.remove('hidden');
 }
-function closeEditDriveModal(){
-  document.getElementById('edit-drive-overlay').classList.add('hidden');
-  editDriveId=null;
-}
-function saveEditDrive(){
-  const d=drives.find(x=>x.id===editDriveId);if(!d)return;
-  const km=parseFloat(document.getElementById('edit-drv-km').value);
+function closeDriveEditModal(){document.getElementById('drive-edit-overlay').classList.add('hidden');driveEditId=null;}
+function saveDriveEdit(){
+  const d=drives.find(x=>x.id===driveEditId);if(!d)return;
+  const km=parseFloat(document.getElementById('dedit-km').value);
   if(!km){showToast('주행거리를 입력해주세요');return;}
-  d.date=document.getElementById('edit-drv-date').value;
-  d.from=document.getElementById('edit-drv-from').value.trim();
-  d.to=document.getElementById('edit-drv-to').value.trim();
+  d.date=document.getElementById('dedit-date').value;
+  d.from=document.getElementById('dedit-from').value.trim();
+  d.to=document.getElementById('dedit-to').value.trim();
   d.km=km;
-  saveDrives();closeEditDriveModal();renderDriveList();showToast('수정됐어요!');
+  saveDrives();closeDriveEditModal();renderDriveList();showToast('수정됐어요!');
 }
 
 let _ghDriveTimer=null;
@@ -576,6 +577,9 @@ function openEditModal(id){
   document.getElementById('edit-price').value=r.pricePerL;
   document.getElementById('edit-liter').value=r.liter.toFixed(2);
   document.getElementById('edit-memo').value=r.memo||'';
+  document.getElementById('edit-odo').value=r.odo||'';
+  document.getElementById('edit-from').value=r.from||'';
+  document.getElementById('edit-to').value=r.to||'';
   document.querySelectorAll('#edit-station-tabs .station-tab').forEach(b=>b.classList.toggle('active',b.textContent===r.station));
   document.getElementById('edit-overlay').classList.remove('hidden');
 }
@@ -590,6 +594,9 @@ function saveEdit(){
   r.amount=amount;r.pricePerL=price;
   r.liter=parseFloat(document.getElementById('edit-liter').value);
   r.memo=document.getElementById('edit-memo').value.trim();
+  r.odo=parseFloat(document.getElementById('edit-odo').value)||null;
+  r.from=document.getElementById('edit-from').value.trim();
+  r.to=document.getElementById('edit-to').value.trim();
   saveData();closeEditModal();updateHeader();renderHistory();showToast('수정됐어요!');
 }
 
