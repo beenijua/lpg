@@ -164,7 +164,10 @@
     <div id="tab-drive" class="section">
       <div class="form-card">
         <div class="form-card-title">주행 기록 추가</div>
-        <div class="form-group"><label>날짜</label><input type="date" id="drv-date"></div>
+        <div class="form-row">
+          <div class="form-group"><label>날짜</label><input type="date" id="drv-date"></div>
+          <div class="form-group"><label>시간</label><input type="time" id="drv-time"></div>
+        </div>
         <div class="form-row">
           <div class="form-group"><label>출발지</label><input type="text" id="drv-from" placeholder="예) 대전"></div>
           <div class="form-group"><label>목적지</label><input type="text" id="drv-to" placeholder="예) 서울"></div>
@@ -231,7 +234,10 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">주행 기록 수정</div>
-    <div class="form-group"><label>날짜</label><input type="date" id="dedit-date"></div>
+    <div class="form-row">
+      <div class="form-group"><label>날짜</label><input type="date" id="dedit-date"></div>
+      <div class="form-group"><label>시간</label><input type="time" id="dedit-time"></div>
+    </div>
     <div class="form-row">
       <div class="form-group"><label>출발지</label><input type="text" id="dedit-from" placeholder="예) 대전"></div>
       <div class="form-group"><label>목적지</label><input type="text" id="dedit-to" placeholder="예) 서울"></div>
@@ -400,6 +406,7 @@ function restoreData(e){
 
 document.getElementById('inp-date').value=new Date().toISOString().split('T')[0];
 document.getElementById('drv-date').value=new Date().toISOString().split('T')[0];
+document.getElementById('drv-time').value=new Date().toTimeString().slice(0,5);
 ['inp-amount','inp-price'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
   const a=parseFloat(document.getElementById('inp-amount').value);
   const p=parseFloat(document.getElementById('inp-price').value);
@@ -433,13 +440,15 @@ function saveDrives(){localStorage.setItem('lpg_drives',JSON.stringify(drives));
 
 function saveDrive(){
   const date=document.getElementById('drv-date').value;
+  const time=document.getElementById('drv-time').value;
   const from=document.getElementById('drv-from').value.trim();
   const to=document.getElementById('drv-to').value.trim();
   const km=parseFloat(document.getElementById('drv-km').value);
   if(!date||!km){showToast('날짜와 주행거리를 입력해주세요');return;}
-  drives.unshift({id:Date.now(),date,from,to,km});
+  drives.unshift({id:Date.now(),date,time,from,to,km});
   saveDrives();
   ['drv-from','drv-to','drv-km'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('drv-time').value=new Date().toTimeString().slice(0,5);
   renderDriveList();showToast('주행 기록이 저장됐어요!');
 }
 
@@ -507,7 +516,7 @@ function renderDriveList(){
     <div class="h-item">
       <div class="h-left">
         ${(d.from||d.to)?`<div class="station">${d.from||'?'} → ${d.to||'?'}</div>`:'<div class="station">주행 기록</div>'}
-        <div class="date">${d.date}</div>
+        <div class="date">${d.date}${d.time?' '+d.time:''}</div>
       </div>
       <div class="h-right">
         <div class="amount">${d.km.toLocaleString()}<span style="font-size:12px;font-weight:400;color:var(--text2);">km</span></div>
@@ -534,6 +543,7 @@ function openDriveEditModal(id){
   const d=drives.find(x=>x.id===id);if(!d)return;
   driveEditId=id;
   document.getElementById('dedit-date').value=d.date;
+  document.getElementById('dedit-time').value=d.time||'';
   document.getElementById('dedit-from').value=d.from||'';
   document.getElementById('dedit-to').value=d.to||'';
   document.getElementById('dedit-km').value=d.km;
@@ -545,6 +555,7 @@ function saveDriveEdit(){
   const km=parseFloat(document.getElementById('dedit-km').value);
   if(!km){showToast('주행거리를 입력해주세요');return;}
   d.date=document.getElementById('dedit-date').value;
+  d.time=document.getElementById('dedit-time').value;
   d.from=document.getElementById('dedit-from').value.trim();
   d.to=document.getElementById('dedit-to').value.trim();
   d.km=km;
