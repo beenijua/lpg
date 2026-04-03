@@ -2,1477 +2,762 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#2D6A4F">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>LPG 충전 기록</title>
+<meta name="theme-color" content="#1D9E75">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="일기장">
-<link rel="manifest" href="manifest.json">
-<title>나의 일기장</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LPG 기록">
+<link rel="manifest" href="/lpg/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-:root {
-  --green-deep:#2D6A4F; --green:#40916C; --green-mid:#52B788;
-  --green-light:#B7E4C7; --green-pale:#D8F3DC; --green-mist:#F0FFF4;
-  --sage:#74B49B; --cream:#FDFDF8; --white:#FFFFFF;
-  --text:#1B2E24; --text-mid:#4A6358; --text-muted:#8FAF9F;
-  --border:#C8E6D4; --border-light:#E8F5ED;
-  --shadow-sm:0 2px 8px rgba(45,106,79,.08);
-  --shadow:0 4px 24px rgba(45,106,79,.12);
-  --shadow-lg:0 8px 40px rgba(45,106,79,.18);
-  --radius:20px; --radius-sm:12px;
-}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden}
-body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--text);display:flex;flex-direction:column}
-
-/* ── PIN SCREEN ── */
-#pinScreen{position:fixed;inset:0;background:var(--green-deep);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px}
-#pinScreen.hidden{display:none}
-.pin-logo{font-family:'DM Serif Display',serif;font-size:32px;color:white;margin-bottom:8px;letter-spacing:-0.5px}
-.pin-sub{color:rgba(255,255,255,.6);font-size:14px;margin-bottom:48px}
-.pin-dots{display:flex;gap:16px;margin-bottom:40px}
-.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.4);transition:all .2s}
-.pin-dot.filled{background:white;border-color:white}
-.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:240px}
-.pin-key{height:64px;border-radius:var(--radius-sm);border:none;background:rgba(255,255,255,.12);color:white;font-size:22px;font-weight:500;cursor:pointer;transition:all .15s;font-family:'Noto Sans KR',sans-serif}
-.pin-key:active{background:rgba(255,255,255,.25);transform:scale(.95)}
-.pin-key.del{font-size:16px}
-.pin-error{color:#FF6B6B;font-size:13px;margin-top:16px;opacity:0;transition:opacity .3s}
-.pin-error.show{opacity:1}
-.pin-setup-hint{color:rgba(255,255,255,.5);font-size:12px;margin-top:20px;text-align:center;line-height:1.6}
-
-/* ── HEADER ── */
-.app-header{background:var(--white);border-bottom:1px solid var(--border-light);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:var(--shadow-sm)}
-.app-header-left{display:flex;align-items:center;gap:10px}
-.app-logo{font-family:'DM Serif Display',serif;font-size:22px;color:var(--green-deep)}
-.app-date-chip{background:var(--green-mist);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--green);font-weight:500}
-.header-btn{background:none;border:none;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;transition:background .2s;flex-shrink:0}
-.header-btn:active{background:var(--green-pale)}
-
-/* ── NAV ── */
-.app-nav{display:flex;background:var(--white);border-top:1px solid var(--border-light);flex-shrink:0;box-shadow:0 -2px 12px rgba(45,106,79,.06)}
-.nav-btn{flex:1;padding:10px 4px 8px;border:none;background:none;font-family:'Noto Sans KR',sans-serif;font-size:11px;color:var(--text-muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .2s}
-.nav-btn.active{color:var(--green-deep);font-weight:700}
-.nav-icon{font-size:18px}
-.nav-btn.active::after{content:'';display:block;width:20px;height:2px;background:var(--green-deep);border-radius:2px;margin-top:2px}
-
-/* ── MAIN CONTENT ── */
-.app-main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
-.page{display:none;min-height:100%;padding-bottom:20px}
-.page.active{display:block}
-
-/* ── HOME PAGE ── */
-.home-banner{background:linear-gradient(135deg,var(--green-deep) 0%,var(--green) 100%);padding:24px 20px;position:relative;overflow:hidden}
-.home-banner::before{content:'';position:absolute;top:-40px;right:-30px;width:160px;height:160px;background:rgba(255,255,255,.05);border-radius:50%}
-.home-banner::after{content:'';position:absolute;bottom:-20px;left:20px;width:80px;height:80px;background:rgba(255,255,255,.04);border-radius:50%}
-.banner-greeting{font-family:'DM Serif Display',serif;font-size:26px;color:white;line-height:1.3;margin-bottom:6px}
-.banner-sub{color:rgba(255,255,255,.7);font-size:13px}
-.streak-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border-radius:20px;padding:6px 14px;margin-top:14px;color:white;font-size:12px;font-weight:500}
-
-/* 1년 전 카드 */
-.memory-card{margin:16px;background:var(--white);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-sm);border:1px solid var(--border-light);cursor:pointer}
-.memory-label{font-size:11px;color:var(--green);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px}
-.memory-title{font-family:'Noto Serif KR',serif;font-size:16px;color:var(--text);margin-bottom:6px;line-height:1.4}
-.memory-preview{font-size:13px;color:var(--text-muted);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-
-/* 최근 일기 목록 */
-.section-label{padding:16px 20px 8px;font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
-.diary-card{margin:0 16px 12px;background:var(--white);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-sm);border:1px solid var(--border-light);cursor:pointer;transition:transform .15s,box-shadow .15s}
-.diary-card:active{transform:scale(.98);box-shadow:var(--shadow)}
-.diary-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.diary-card-date{font-size:12px;color:var(--text-muted);font-weight:500}
-.diary-card-mood{font-size:22px}
-.diary-card-title{font-family:'Noto Serif KR',serif;font-size:15px;color:var(--text);margin-bottom:6px;line-height:1.4}
-.diary-card-preview{font-size:13px;color:var(--text-muted);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:10px}
-.diary-card-bottom{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.tag-chip{background:var(--green-mist);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--green);font-weight:500}
-.weather-chip{font-size:12px;color:var(--text-muted)}
-.diary-photo-strip{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.diary-photo-thumb{width:60px;height:60px;object-fit:cover;border-radius:10px;flex-shrink:0}
-
-/* ── CALENDAR PAGE ── */
-.calendar-nav{display:flex;align-items:center;justify-content:space-between;padding:16px 20px}
-.cal-nav-btn{background:none;border:none;font-size:22px;color:var(--green-deep);cursor:pointer;padding:4px 10px}
-.cal-month{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text)}
-.calendar-grid{padding:0 16px 16px;display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.cal-dow{text-align:center;font-size:11px;color:var(--text-muted);font-weight:600;padding:4px 0;letter-spacing:.3px}
-.cal-day{aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .15s}
-.cal-day:active{background:var(--green-pale)}
-.cal-day.has-entry{background:var(--green-mist);border:1px solid var(--border)}
-.cal-day.today{background:var(--green-pale);border:2px solid var(--green-mid)}
-.cal-day.selected{background:var(--green-light)!important;border:2px solid var(--green)!important}
-.cal-day-num{font-size:13px;font-weight:500;color:var(--text-mid)}
-.cal-day.other-month .cal-day-num{color:var(--border)}
-.cal-day-mood{font-size:12px;line-height:1}
-.cal-detail{margin:0 16px;background:var(--white);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-sm);border:1px solid var(--border-light);min-height:80px}
-.cal-detail-empty{text-align:center;padding:20px;color:var(--text-muted);font-size:13px}
-
-/* ── WRITE PAGE ── */
-.write-toolbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--white);border-bottom:1px solid var(--border-light);flex-shrink:0}
-.write-cancel{background:none;border:none;font-size:14px;color:var(--text-muted);cursor:pointer;font-family:'Noto Sans KR',sans-serif;padding:6px 10px}
-.write-save{background:var(--green-deep);color:white;border:none;border-radius:20px;padding:8px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
-.write-content{padding:16px;display:flex;flex-direction:column;gap:14px}
-.write-date-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.write-date-display{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text)}
-.write-date-input{border:2px solid var(--border);border-radius:10px;padding:6px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);outline:none;background:var(--cream)}
-.write-date-input:focus{border-color:var(--green-mid)}
-
-/* 기분 선택 */
-.mood-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
-.mood-btn{flex-shrink:0;width:48px;height:48px;border-radius:14px;border:2px solid var(--border);background:var(--white);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;position:relative}
-.mood-btn.active{border-color:var(--green-mid);background:var(--green-mist);transform:scale(1.1)}
-.mood-label{position:absolute;bottom:-16px;font-size:9px;color:var(--text-muted);white-space:nowrap}
-
-/* 날씨 선택 */
-.weather-row{display:flex;gap:8px;flex-wrap:wrap}
-.weather-btn{padding:7px 14px;border-radius:20px;border:2px solid var(--border);background:var(--white);font-size:13px;cursor:pointer;transition:all .2s;font-family:'Noto Sans KR',sans-serif;color:var(--text-mid)}
-.weather-btn.active{border-color:var(--green-mid);background:var(--green-mist);color:var(--green-deep);font-weight:600}
-
-/* 사진 첨부 */
-.photo-section{background:var(--white);border-radius:var(--radius-sm);border:2px dashed var(--border);padding:14px}
-.photo-add-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--green);font-size:14px;font-weight:500;cursor:pointer;font-family:'Noto Sans KR',sans-serif;padding:0}
-.photo-previews{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.photo-preview-wrap{position:relative;width:80px;height:80px}
-.photo-preview-img{width:80px;height:80px;object-fit:cover;border-radius:12px}
-.photo-del-btn{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#FF6B6B;color:white;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
-
-/* 제목 / 본문 */
-.title-input{width:100%;border:none;background:transparent;font-family:'Noto Serif KR',serif;font-size:20px;color:var(--text);outline:none;line-height:1.4}
-.title-input::placeholder{color:var(--border);font-family:'Noto Serif KR',serif}
-.divider{height:1px;background:var(--border-light)}
-.body-input{width:100%;border:none;background:transparent;font-family:'Noto Sans KR',sans-serif;font-size:15px;color:var(--text);outline:none;line-height:1.8;resize:none;min-height:200px}
-.body-input::placeholder{color:var(--border)}
-
-/* 태그 */
-.tag-input-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.tag-input{border:2px solid var(--border);border-radius:20px;padding:6px 14px;font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;color:var(--text);background:var(--cream);width:120px}
-.tag-input:focus{border-color:var(--green-mid)}
-.tag-add-btn{background:var(--green-mist);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:13px;color:var(--green);cursor:pointer;font-family:'Noto Sans KR',sans-serif}
-.write-tag{display:inline-flex;align-items:center;gap:4px;background:var(--green-pale);border:1px solid var(--green-light);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--green-deep)}
-.write-tag-del{background:none;border:none;color:var(--green);cursor:pointer;font-size:12px;line-height:1;padding:0}
-
-/* ── DETAIL PAGE ── */
-.detail-header{background:var(--white);padding:16px 20px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between}
-.detail-back{background:none;border:none;font-size:22px;color:var(--green-deep);cursor:pointer}
-.detail-actions{display:flex;gap:8px}
-.detail-action-btn{background:none;border:none;font-size:18px;cursor:pointer;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .2s}
-.detail-action-btn:active{background:var(--green-pale)}
-.detail-content{padding:20px}
-.detail-meta{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-.detail-date{font-size:13px;color:var(--text-muted);font-weight:500}
-.detail-mood-big{font-size:32px}
-.detail-title{font-family:'Noto Serif KR',serif;font-size:22px;color:var(--text);line-height:1.4;margin-bottom:14px}
-.detail-photos{display:flex;gap:8px;overflow-x:auto;margin-bottom:16px;-webkit-overflow-scrolling:touch}
-.detail-photo{height:180px;border-radius:16px;object-fit:cover;flex-shrink:0;cursor:pointer}
-.detail-body{font-size:15px;color:var(--text-mid);line-height:1.9;white-space:pre-wrap;font-family:'Noto Sans KR',sans-serif}
-.detail-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}
-
-/* ── SEARCH PAGE ── */
-.search-bar-wrap{padding:14px 16px}
-.search-bar{display:flex;gap:8px;align-items:center;background:var(--white);border:2px solid var(--border);border-radius:var(--radius);padding:10px 16px}
-.search-bar:focus-within{border-color:var(--green-mid)}
-.search-icon{font-size:16px;color:var(--text-muted)}
-.search-input-el{flex:1;border:none;background:transparent;font-size:14px;font-family:'Noto Sans KR',sans-serif;color:var(--text);outline:none}
-.search-input-el::placeholder{color:var(--text-muted)}
-.search-results{padding:0 16px}
-.search-empty{text-align:center;padding:60px 20px;color:var(--text-muted)}
-.search-empty-icon{font-size:48px;margin-bottom:12px}
-
-/* ── SETTINGS PAGE ── */
-.settings-content{padding:16px}
-.s-group{background:var(--white);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;box-shadow:var(--shadow-sm);border:1px solid var(--border-light)}
-.s-group-title{padding:12px 16px;font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;background:var(--cream);border-bottom:1px solid var(--border-light)}
-.s-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border-light);gap:12px}
-.s-item:last-child{border-bottom:none}
-.s-label{font-size:14px;font-weight:500;color:var(--text)}
-.s-sub{font-size:11px;color:var(--text-muted);margin-top:2px}
-.s-btn{background:var(--green-mist);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-size:13px;color:var(--green-deep);font-weight:500;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap}
-.s-btn.danger{background:#FFF5F5;border-color:#FFD0D0;color:#E05252}
-.pin-change-row{display:flex;gap:8px;align-items:center}
-.pin-text-input{border:2px solid var(--border);border-radius:10px;padding:7px 12px;font-size:16px;font-family:monospace;width:100px;text-align:center;letter-spacing:6px;outline:none}
-.pin-text-input:focus{border-color:var(--green-mid)}
-
-/* ── PHOTO LIGHTBOX ── */
-#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9000;align-items:center;justify-content:center;cursor:pointer}
-#lightbox.open{display:flex}
-#lightboxImg{max-width:95vw;max-height:85vh;border-radius:12px;object-fit:contain;cursor:default;display:block}
-#lbPrev,#lbNext{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.2);border:none;color:white;width:44px;height:44px;border-radius:50%;font-size:24px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:10;line-height:1}
-#lbPrev{left:12px}
-#lbNext{right:12px}
-#lightbox.open #lbPrev,#lightbox.open #lbNext{display:flex}
-#lbCounter{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;display:none}
-#lightbox.open #lbCounter.visible{display:block}
-
-/* ── 쓰기 모드 선택 ── */
-.write-mode-tabs{display:flex;gap:0;background:var(--border-light);border-radius:14px;padding:3px;margin-bottom:16px}
-.write-mode-tab{flex:1;padding:8px;border:none;background:transparent;border-radius:12px;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .2s}
-.write-mode-tab.active{background:var(--white);color:var(--green-deep);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-
-/* ── 블록 모드 ── */
-.block-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
-.block-item{background:var(--white);border:1px solid var(--border-light);border-radius:16px;overflow:hidden;position:relative}
-.block-controls{display:flex;gap:2px;padding:6px 8px;background:var(--cream);border-bottom:1px solid var(--border-light);justify-content:space-between;align-items:center}
-.block-ctrl-btn{background:none;border:none;font-size:14px;color:var(--text-muted);cursor:pointer;padding:4px 6px;border-radius:8px;line-height:1}
-.block-ctrl-btn:active{background:var(--border-light)}
-.block-ctrl-left{display:flex;gap:2px}
-.block-text-area{width:100%;border:none;background:transparent;font-family:'Noto Sans KR',sans-serif;font-size:15px;color:var(--text);outline:none;line-height:1.8;resize:none;padding:12px 14px;min-height:80px}
-.block-photo-wrap{position:relative}
-.block-photo-img{width:100%;max-height:260px;object-fit:cover;display:block;cursor:pointer}
-.block-photo-placeholder{padding:20px;text-align:center;color:var(--text-muted);font-size:13px;cursor:pointer}
-.block-add-row{display:flex;gap:8px;margin-bottom:16px}
-.block-add-btn{flex:1;padding:12px;border:2px dashed var(--border);border-radius:14px;background:transparent;font-family:'Noto Sans KR',sans-serif;font-size:13px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
-.block-add-btn:active{background:var(--green-mist);border-color:var(--green-mid);color:var(--green)}
-
-/* ── 사진모음 모드 순서 조정 ── */
-.photo-sort-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.photo-sort-item{display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border-light);border-radius:14px;padding:8px}
-.photo-sort-img{width:64px;height:64px;object-fit:cover;border-radius:10px;flex-shrink:0;cursor:pointer}
-.photo-sort-info{flex:1;font-size:12px;color:var(--text-muted)}
-.photo-sort-btns{display:flex;flex-direction:column;gap:4px}
-.photo-sort-btn{background:var(--green-mist);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--green-deep)}
-.photo-sort-btn:disabled{opacity:.3;cursor:not-allowed}
-.photo-sort-del{background:#FFF5F5;border:1px solid #FFD0D0;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#E05252}
-
-/* ── TOAST ── */
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:white;padding:12px 20px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:all .3s;z-index:9999;white-space:nowrap;pointer-events:none}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.toast.success{background:var(--green-deep)}
-.toast.warn{background:#FF6B6B}
-
-/* ── WRITE PAGE LAYOUT (full height) ── */
-#page-write{display:none;flex-direction:column;height:100%}
-#page-write.active{display:flex}
-.write-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
-
-/* 빈 상태 */
-.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted)}
-.empty-icon{font-size:52px;margin-bottom:14px}
-.empty-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text-mid);margin-bottom:8px}
-.empty-desc{font-size:13px;line-height:1.7}
-
-/* FAB */
-.fab{position:fixed;bottom:76px;right:20px;width:54px;height:54px;background:var(--green-deep);border-radius:50%;border:none;color:white;font-size:26px;box-shadow:0 4px 20px rgba(45,106,79,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;transition:transform .2s}
-.fab:active{transform:scale(.9)}
-
-/* 스크롤바 숨기기 */
-::-webkit-scrollbar{width:0;height:0}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --accent: #1D9E75; --accent-light: #E1F5EE; --accent-mid: #5DCAA5; --accent-dark: #0F6E56;
+    --bg: #f7f8f6; --surface: #ffffff; --surface2: #f2f4f2; --border: rgba(0,0,0,0.09);
+    --text: #1a1c1a; --text2: #6b7068; --text3: #a0a59e;
+    --red: #E24B4A; --red-light: #FCEBEB; --red-text: #A32D2D; --blue: #378ADD; --amber: #BA7517;
+  }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  .app { max-width: 480px; margin: 0 auto; padding: 0 0 80px; min-height: 100vh; background: var(--bg); }
+  .header { background: var(--accent); padding: 20px 20px 24px; position: relative; overflow: hidden; }
+  .header::after { content: ''; position: absolute; right: -30px; bottom: -30px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.08); }
+  .header::before { content: ''; position: absolute; right: 20px; top: -20px; width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.06); }
+  .header-row { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; }
+  .logo { width: 42px; height: 42px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo svg { width: 24px; height: 24px; fill: white; }
+  .header h1 { font-size: 20px; font-weight: 700; color: white; letter-spacing: -0.3px; }
+  .header-sub { font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+  .header-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 18px; position: relative; z-index: 1; }
+  .h-stat { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 12px; }
+  .h-stat .hl { font-size: 10px; color: rgba(255,255,255,0.7); margin-bottom: 3px; }
+  .h-stat .hv { font-size: 16px; font-weight: 700; color: white; }
+  .h-stat .hu { font-size: 10px; color: rgba(255,255,255,0.7); font-weight: 400; }
+  .nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  .nav-btn { flex: 1; padding: 12px 4px; border: none; background: transparent; font-size: 11px; font-weight: 500; color: var(--text2); cursor: pointer; font-family: 'Noto Sans KR', sans-serif; border-bottom: 2px solid transparent; transition: all 0.18s; }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .content { padding: 20px; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .form-card { background: var(--surface); border-radius: 16px; padding: 20px; border: 1px solid var(--border); margin-bottom: 12px; }
+  .form-card-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .form-group { margin-bottom: 12px; }
+  .form-group:last-child { margin-bottom: 0; }
+  .form-group label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; font-weight: 500; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-group input { width: 100%; height: 42px; border: 1.5px solid var(--border); border-radius: 10px; padding: 0 12px; font-size: 14px; color: var(--text); background: var(--surface2); font-family: 'Noto Sans KR', sans-serif; transition: border-color 0.15s; }
+  .form-group input:focus { outline: none; border-color: var(--accent); background: white; }
+  .form-group input[readonly] { color: var(--accent-dark); font-weight: 700; background: var(--accent-light); border-color: transparent; }
+  .save-btn { width: 100%; height: 48px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: background 0.15s, transform 0.1s; }
+  .save-btn:hover { background: var(--accent-dark); }
+  .save-btn:active { transform: scale(0.98); }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .stat-card { background: var(--surface); border-radius: 14px; padding: 14px 16px; border: 1px solid var(--border); }
+  .stat-card.accent { background: var(--accent-light); border-color: transparent; }
+  .stat-card .lbl { font-size: 11px; color: var(--text2); margin-bottom: 4px; font-weight: 500; }
+  .stat-card.accent .lbl { color: var(--accent-dark); }
+  .stat-card .val { font-size: 22px; font-weight: 700; color: var(--text); }
+  .stat-card.accent .val { color: var(--accent-dark); }
+  .stat-card .unit { font-size: 11px; color: var(--text2); font-weight: 400; }
+  .chart-card { background: var(--surface); border-radius: 16px; padding: 16px; border: 1px solid var(--border); margin-bottom: 12px; }
+  .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .chart-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .chart-toggle { display: flex; gap: 5px; }
+  .chart-btn { padding: 4px 10px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 11px; cursor: pointer; background: transparent; color: var(--text2); font-family: 'Noto Sans KR', sans-serif; font-weight: 500; transition: all 0.15s; }
+  .chart-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
+  .tip-card { background: var(--accent-light); border-radius: 14px; padding: 14px 16px; border: 1px solid rgba(29,158,117,0.15); margin-bottom: 12px; }
+  .tip-card .tip-title { font-size: 12px; font-weight: 700; color: var(--accent-dark); margin-bottom: 6px; }
+  .tip-card .tip-body { font-size: 12px; color: var(--accent-dark); line-height: 1.8; }
+  .tip-card strong { font-weight: 700; }
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .h-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+  .h-left .station { font-size: 14px; font-weight: 700; color: var(--text); }
+  .h-left .memo { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .h-left .date { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .h-right { text-align: right; }
+  .h-right .amount { font-size: 15px; font-weight: 700; color: var(--text); }
+  .h-right .detail { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .h-right .pprice { font-size: 12px; color: var(--accent-dark); margin-top: 2px; font-weight: 700; }
+  .h-actions { display: flex; align-items: center; margin-left: 10px; }
+  .del-btn { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--text3); padding: 6px; border-radius: 8px; transition: all 0.15s; }
+  .del-btn:hover { background: var(--red-light); color: var(--red); }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 20px; font-size: 10px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
+  .badge-up { background: var(--red-light); color: var(--red-text); }
+  .badge-dn { background: var(--accent-light); color: var(--accent-dark); }
+  .empty { text-align: center; padding: 60px 0; color: var(--text2); font-size: 14px; line-height: 2; }
+  .month-label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 0 8px; }
+  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(10px); background: #1a1c1a; color: white; padding: 10px 20px; border-radius: 24px; font-size: 13px; font-weight: 500; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 999; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .station-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  .station-tab { padding: 7px 12px; border-radius: 99px; border: 1.5px solid var(--border); background: transparent; font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: all 0.15s; }
+  .station-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .edit-btn { background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text3); padding: 6px; border-radius: 8px; transition: all 0.15s; }
+  .edit-btn:hover { background: var(--accent-light); color: var(--accent-dark); }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; display: flex; align-items: flex-end; justify-content: center; }
+  .overlay.hidden { display: none; }
+  .modal { background: var(--surface); border-radius: 24px 24px 0 0; padding: 24px 20px 40px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+  .modal-handle { width: 36px; height: 4px; border-radius: 99px; background: var(--border); margin: 0 auto 20px; }
+  .modal-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .btn-primary { flex: 1; height: 48px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; }
+  .btn-secondary { flex: 1; height: 48px; background: var(--surface2); color: var(--text2); border: none; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; }
 </style>
 </head>
 <body>
-
-<!-- PIN SCREEN -->
-<div id="pinScreen">
-  <div class="pin-logo">나의 일기장</div>
-  <div class="pin-sub" id="pinSubtitle">PIN을 입력해주세요</div>
-  <div class="pin-dots">
-    <div class="pin-dot" id="d0"></div>
-    <div class="pin-dot" id="d1"></div>
-    <div class="pin-dot" id="d2"></div>
-    <div class="pin-dot" id="d3"></div>
-  </div>
-  <div class="pin-keypad">
-    <button class="pin-key" onclick="pinInput('1')">1</button>
-    <button class="pin-key" onclick="pinInput('2')">2</button>
-    <button class="pin-key" onclick="pinInput('3')">3</button>
-    <button class="pin-key" onclick="pinInput('4')">4</button>
-    <button class="pin-key" onclick="pinInput('5')">5</button>
-    <button class="pin-key" onclick="pinInput('6')">6</button>
-    <button class="pin-key" onclick="pinInput('7')">7</button>
-    <button class="pin-key" onclick="pinInput('8')">8</button>
-    <button class="pin-key" onclick="pinInput('9')">9</button>
-    <button class="pin-key" style="font-size:12px;opacity:.4" onclick="">✕</button>
-    <button class="pin-key" onclick="pinInput('0')">0</button>
-    <button class="pin-key del" onclick="pinDelete()">⌫</button>
-  </div>
-  <div class="pin-error" id="pinError">PIN이 틀렸어요</div>
-  <div class="pin-setup-hint" id="pinSetupHint" style="display:none"></div>
-</div>
-
-<!-- APP HEADER -->
-<div class="app-header" id="appHeader" style="display:none">
-  <div class="app-header-left">
-    <span class="app-logo">🌿 일기장</span>
-  </div>
-  <div style="display:flex;align-items:center;gap:4px">
-    <button class="header-btn" onclick="showPage('settings')" title="설정">⚙️</button>
-  </div>
-</div>
-
-<!-- MAIN CONTENT -->
-<div class="app-main" id="appMain" style="display:none">
-
-  <!-- PAGE: HOME -->
-  <div class="page active" id="page-home">
-    <div class="home-banner">
-      <div class="banner-greeting" id="bannerGreeting">안녕하세요 🌿</div>
-      <div class="banner-sub" id="bannerSub"></div>
-      <div class="streak-chip" id="streakChip">✍️ <span id="streakText">오늘도 일기를 써봐요</span></div>
-    </div>
-    <div id="memoryCard" style="display:none"></div>
-    <div class="section-label">최근 일기</div>
-    <div id="recentList"></div>
-    <div class="empty-state" id="homeEmpty" style="display:none">
-      <div class="empty-icon">📖</div>
-      <div class="empty-title">아직 일기가 없어요</div>
-      <div class="empty-desc">오늘의 이야기를 기록해봐요<br>작은 기록이 소중한 추억이 돼요 🌱</div>
-    </div>
-  </div>
-
-  <!-- PAGE: CALENDAR -->
-  <div class="page" id="page-calendar">
-    <div class="calendar-nav">
-      <button class="cal-nav-btn" onclick="changeCalMonth(-1)">‹</button>
-      <span class="cal-month" id="calMonthLabel"></span>
-      <button class="cal-nav-btn" onclick="changeCalMonth(1)">›</button>
-    </div>
-    <div class="calendar-grid" id="calDow">
-      <div class="cal-dow">일</div><div class="cal-dow">월</div><div class="cal-dow">화</div>
-      <div class="cal-dow">수</div><div class="cal-dow">목</div><div class="cal-dow">금</div><div class="cal-dow">토</div>
-    </div>
-    <div class="calendar-grid" id="calGrid"></div>
-    <div class="cal-detail" id="calDetail"><div class="cal-detail-empty">날짜를 선택하면 그 날의 일기를 볼 수 있어요 🌿</div></div>
-  </div>
-
-  <!-- PAGE: WRITE (fixed layout) -->
-  <div class="page" id="page-write">
-    <div class="write-toolbar">
-      <button class="write-cancel" onclick="cancelWrite()">취소</button>
-      <span style="font-family:'DM Serif Display',serif;font-size:16px;color:var(--text)" id="writeToolbarTitle">새 일기</span>
-      <button class="write-save" onclick="saveDiary()">저장</button>
-    </div>
-    <div class="write-scroll">
-      <div class="write-content">
-        <!-- 날짜 -->
-        <div class="write-date-row">
-          <input type="date" class="write-date-input" id="writeDate">
-        </div>
-        <!-- 기분 -->
-        <div>
-          <div style="font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:.4px;margin-bottom:10px">오늘의 기분</div>
-          <div class="mood-row" id="moodRow"></div>
-        </div>
-        <!-- 날씨 -->
-        <div>
-          <div style="font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:.4px;margin-bottom:10px">날씨</div>
-          <div class="weather-row" id="weatherRow"></div>
-        </div>
-        <!-- 제목 -->
-        <input class="title-input" id="writeTitle" placeholder="제목 (선택사항)" maxlength="50">
-        <div class="divider" style="margin-bottom:16px"></div>
-
-        <!-- 모드 선택 -->
-        <div class="write-mode-tabs">
-          <button class="write-mode-tab active" id="modeTabBlock" onclick="selectWriteMode('block')">📝 블록 모드</button>
-          <button class="write-mode-tab" id="modeTabGallery" onclick="selectWriteMode('gallery')">📷 사진모음 모드</button>
-        </div>
-
-        <!-- ── 블록 모드 ── -->
-        <div id="blockModeArea">
-          <div class="block-list" id="blockList"></div>
-          <div class="block-add-row">
-            <button class="block-add-btn" onclick="addBlock('text')">✍️ 텍스트</button>
-            <button class="block-add-btn" onclick="addBlock('photo')">📷 사진</button>
-          </div>
-        </div>
-
-        <!-- ── 사진모음 모드 ── -->
-        <div id="galleryModeArea" style="display:none">
-          <div class="photo-section">
-            <button class="photo-add-btn" onclick="document.getElementById('galleryPhotoInput').click()">
-              📷 사진 추가하기 (최대 6장)
-            </button>
-            <input type="file" id="galleryPhotoInput" accept="image/*" multiple style="display:none" onchange="handleGalleryPhotos(event)">
-          </div>
-          <div class="photo-sort-list" id="photoSortList"></div>
-          <div style="height:12px"></div>
-          <div class="divider" style="margin-bottom:12px"></div>
-          <textarea class="body-input" id="galleryBody" placeholder="오늘은 어떤 하루였나요?&#10;자유롭게 적어봐요 🌿"></textarea>
-        </div>
-
-        <!-- 태그 (공통) -->
-        <div style="margin-top:12px">
-          <div style="font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:.4px;margin-bottom:10px">태그</div>
-          <div class="tag-input-row" id="tagInputRow">
-            <input class="tag-input" id="tagInput" placeholder="#태그" maxlength="10" onkeydown="if(event.key==='Enter')addTag()">
-            <button class="tag-add-btn" onclick="addTag()">+ 추가</button>
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px" id="writeTags"></div>
-        </div>
-        <div style="height:60px"></div>
+<div class="app">
+  <div class="header">
+    <div class="header-row">
+      <div class="logo">
+        <svg viewBox="0 0 24 24"><path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77zM12 10H6V5h6v5zm6 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/></svg>
+      </div>
+      <div>
+        <h1>LPG 충전 기록</h1>
+        <div class="header-sub" id="hdr-sub">내 차량 가스 충전 관리</div>
       </div>
     </div>
-  </div>
-
-  <!-- PAGE: DETAIL -->
-  <div class="page" id="page-detail">
-    <div class="detail-header">
-      <button class="detail-back" onclick="backFromDetail()">←</button>
-      <div class="detail-actions">
-        <button class="detail-action-btn" onclick="editCurrentDiary()" title="수정">✏️</button>
-        <button class="detail-action-btn" onclick="deleteCurrentDiary()" title="삭제">🗑️</button>
-      </div>
-    </div>
-    <div class="detail-content" id="detailContent"></div>
-  </div>
-
-  <!-- PAGE: SEARCH -->
-  <div class="page" id="page-search">
-    <div class="search-bar-wrap">
-      <div class="search-bar">
-        <span class="search-icon">🔍</span>
-        <input class="search-input-el" id="searchInput" placeholder="키워드, 태그로 검색해보세요" oninput="doSearch()">
-      </div>
-    </div>
-    <div class="search-results" id="searchResults">
-      <div class="search-empty">
-        <div class="search-empty-icon">🔍</div>
-        <div style="font-size:14px;color:var(--text-muted)">검색어를 입력해보세요</div>
-      </div>
+    <div class="header-stats">
+      <div class="h-stat"><div class="hl">총 횟수</div><div class="hv" id="hs-cnt">0<span class="hu">회</span></div></div>
+      <div class="h-stat"><div class="hl">평균 단가</div><div class="hv" id="hs-avg">-<span class="hu">원/L</span></div></div>
+      <div class="h-stat"><div class="hl">총 금액</div><div class="hv" id="hs-total">-<span class="hu">만원</span></div></div>
     </div>
   </div>
-
-  <!-- PAGE: SETTINGS -->
-  <div class="page" id="page-settings">
-    <div class="settings-content">
-      <div class="s-group">
-        <div class="s-group-title">☁️ GitHub 동기화</div>
-        <div class="s-item" style="flex-direction:column;align-items:flex-start;gap:10px;">
-          <div style="width:100%">
-            <div class="s-label">Personal Access Token</div>
-            <div class="s-sub">설정하면 데이터가 GitHub에 자동 저장돼요</div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="switchTab('add')">충전 입력</button>
+    <button class="nav-btn" onclick="switchTab('drive')">주행 기록</button>
+    <button class="nav-btn" onclick="switchTab('stats')">통계</button>
+    <button class="nav-btn" onclick="switchTab('history')">내역</button>
+    <button class="nav-btn" onclick="switchTab('settings')">설정</button>
+  </nav>
+  <div class="content">
+    <div id="tab-add" class="section active">
+      <div class="form-card">
+        <div class="form-card-title">기본 정보</div>
+        <div class="form-row">
+          <div class="form-group"><label>충전 날짜</label><input type="date" id="inp-date"></div>
+          <div class="form-group"><label>충전 시간</label><input type="time" id="inp-time"></div>
+        </div>
+        <div class="form-group">
+          <label>주유소</label>
+          <div class="station-tabs" id="station-tabs">
+            <button class="station-tab" onclick="selectStation('E1')">E1</button>
+            <button class="station-tab" onclick="selectStation('SK')">SK</button>
+            <button class="station-tab" onclick="selectStation('GS')">GS</button>
+            <button class="station-tab" onclick="selectStation('S-oil')">S-oil</button>
+            <button class="station-tab" onclick="selectStation('현대')">현대</button>
           </div>
+        </div>
+        <div class="form-group"><label>메모</label><input type="text" id="inp-memo" placeholder="예) 집 근처, 할인 행사 등"></div>
+      </div>
+      <div class="form-card">
+        <div class="form-card-title">충전 내역</div>
+        <div class="form-row">
+          <div class="form-group"><label>충전 금액 (원)</label><input type="number" id="inp-amount" placeholder="50000"></div>
+          <div class="form-group"><label>리터당 가격 (원/L)</label><input type="number" id="inp-price" placeholder="1080" step="0.1"></div>
+        </div>
+        <div class="form-group"><label>충전량 (자동 계산)</label><input type="number" id="inp-liter" readonly placeholder="금액과 단가 입력 시 자동 계산"></div>
+      </div>
+      <button class="save-btn" onclick="saveRecord()">충전 기록 저장</button>
+    </div>
+    <div id="tab-drive" class="section">
+      <div class="form-card">
+        <div class="form-card-title">주행 기록 추가</div>
+        <div class="form-row">
+          <div class="form-group"><label>날짜</label><input type="date" id="drv-date"></div>
+          <div class="form-group"><label>시간</label><input type="time" id="drv-time"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>출발지</label><input type="text" id="drv-from" placeholder="예) 대전"></div>
+          <div class="form-group"><label>목적지</label><input type="text" id="drv-to" placeholder="예) 서울"></div>
+        </div>
+        <div class="form-group"><label>주행거리 (km)</label><input type="number" id="drv-km" placeholder="예) 350" step="1"></div>
+      </div>
+      <button class="save-btn" onclick="saveDrive()">주행 기록 저장</button>
+      <div id="drv-month-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:16px;margin-bottom:8px;"></div>
+      <div id="drv-week-tabs" style="display:flex;gap:6px;margin-bottom:12px;"></div>
+      <div class="history-list" id="drive-list"></div>
+    </div>
+    <div id="tab-stats" class="section">
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="stats-grid" id="drive-grid"></div>
+      <div id="saving-wrap"></div>
+      <div class="chart-card" id="cal-card" style="display:none;">
+        <div class="chart-header"><span class="chart-title">월별 주행거리</span></div>
+        <div id="drive-cal" style="padding:4px 0 8px;"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title" id="chart-title">리터당 가격 추이</span>
+          <div class="chart-toggle">
+            <button class="chart-btn active" onclick="switchChart(this,'price')">단가</button>
+            <button class="chart-btn" onclick="switchChart(this,'amount')">금액</button>
+            <button class="chart-btn" onclick="switchChart(this,'liter')">충전량</button>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+      </div>
+      <div class="tip-card"><div class="tip-title">절약 분석</div><div class="tip-body" id="tip-body">충전 기록이 쌓이면 절약 팁을 알려드려요.</div></div>
+    </div>
+    <div id="tab-history" class="section">
+      <div class="history-list" id="history-list"></div>
+    </div>
+    <div id="tab-settings" class="section">
+      <div class="form-card">
+        <div class="form-card-title">☁️ GitHub 동기화</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
           <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx"
-            style="width:100%;background:var(--green-mist);border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;outline:none;">
-          <div style="display:flex;gap:8px;width:100%">
-            <button class="s-btn" onclick="saveGhToken()" style="flex:1;">저장</button>
-            <button class="s-btn" onclick="syncFromGitHub()" style="flex:1;">지금 불러오기</button>
+            style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--text1);font-family:'Noto Sans KR',sans-serif;background:var(--bg2);outline:none;">
+          <div style="display:flex;gap:8px;">
+            <button class="save-btn" onclick="saveGhToken()" style="flex:1;background:var(--accent);">토큰 저장</button>
+            <button class="save-btn" onclick="syncFromGitHub()" style="flex:1;background:var(--text2);">지금 불러오기</button>
           </div>
-          <div id="syncStatus" style="font-size:12px;color:var(--text-muted);width:100%;line-height:1.6;"></div>
+          <div id="syncStatus" style="font-size:12px;color:var(--text2);line-height:1.6;"></div>
         </div>
       </div>
-      <div class="s-group">
-        <div class="s-group-title">🔒 보안</div>
-        <div class="s-item">
-          <div><div class="s-label">PIN 변경</div><div class="s-sub">4자리 숫자</div></div>
-          <div class="pin-change-row">
-            <input class="pin-text-input" id="newPinInput" type="password" maxlength="4" placeholder="••••" inputmode="numeric">
-            <button class="s-btn" onclick="changePin()">변경</button>
-          </div>
-        </div>
-      </div>
-      <div class="s-group">
-        <div class="s-group-title">📦 데이터</div>
-        <div class="s-item">
-          <div><div class="s-label">백업 내보내기</div><div class="s-sub">JSON 파일로 저장 · 맥북 이동 가능</div></div>
-          <button class="s-btn" onclick="exportData()">📤 내보내기</button>
-        </div>
-        <div class="s-item">
-          <div><div class="s-label">백업 가져오기</div><div class="s-sub">JSON 파일로 복원</div></div>
-          <button class="s-btn" onclick="document.getElementById('importFile').click()">📥 가져오기</button>
-        </div>
-        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-        <div class="s-item">
-          <div><div class="s-label">모든 데이터 초기화</div><div class="s-sub">되돌릴 수 없어요</div></div>
-          <button class="s-btn danger" onclick="resetAll()">🗑️ 초기화</button>
-        </div>
-      </div>
-      <div class="s-group">
-        <div class="s-group-title">ℹ️ 정보</div>
-        <div class="s-item">
-          <div><div class="s-label">총 일기 수</div></div>
-          <span style="font-size:18px;font-weight:700;color:var(--green-deep)" id="totalCount">0</span>
-        </div>
-        <div class="s-item">
-          <div><div class="s-label">맥북 연동 방법</div><div class="s-sub">같은 URL 접속 후 JSON 백업 공유</div></div>
-          <span style="font-size:18px">💻</span>
+      <div class="form-card">
+        <div class="form-card-title">데이터 백업</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button class="save-btn" onclick="backupData()" style="background:var(--accent);">백업 저장 (JSON 다운로드)</button>
+          <button class="save-btn" onclick="document.getElementById('restore-file').click()" style="background:var(--text2);">백업 불러오기</button>
+          <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreData(event)">
         </div>
       </div>
     </div>
   </div>
-
-  <!-- PAGE: PHOTO -->
-  <div class="page" id="page-photo">
-    <div id="photoContent"></div>
-  </div>
-
 </div>
-
-<!-- NAV -->
-<div class="app-nav" id="appNav" style="display:none">
-  <button class="nav-btn active" id="navHome" onclick="showPage('home')"><span class="nav-icon">🏠</span>홈</button>
-  <button class="nav-btn" id="navCalendar" onclick="showPage('calendar')"><span class="nav-icon">📅</span>달력</button>
-  <button class="nav-btn" id="navPhoto" onclick="showPage('photo')"><span class="nav-icon">📷</span>사진</button>
-  <button class="nav-btn" id="navWrite" onclick="openWrite()"><span class="nav-icon">✍️</span>쓰기</button>
-  <button class="nav-btn" id="navSettings" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>설정</button>
-</div>
-
-<input type="file" id="photoAddInput" accept="image/*" style="display:none" onchange="handleDailyPhoto(event,false)">
-<input type="file" id="photoChangeInput" accept="image/*" style="display:none" onchange="handleDailyPhoto(event,true)">
-
-<!-- LIGHTBOX -->
-<div id="lightbox" onclick="closeLightbox()" ontouchstart="lbTouchStart(event)" ontouchend="lbTouchEnd(event)">
-  <button id="lbPrev" onclick="event.stopPropagation();lbPrev()">‹</button>
-  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
-  <div id="lbCounter"></div>
-  <button id="lbNext" onclick="event.stopPropagation();lbNext()">›</button>
-</div>
-
 <div class="toast" id="toast"></div>
 
+<!-- 주행 기록 수정 모달 -->
+<div class="overlay hidden" id="drive-edit-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">주행 기록 수정</div>
+    <div class="form-row">
+      <div class="form-group"><label>날짜</label><input type="date" id="dedit-date"></div>
+      <div class="form-group"><label>시간</label><input type="time" id="dedit-time"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>출발지</label><input type="text" id="dedit-from" placeholder="예) 대전"></div>
+      <div class="form-group"><label>목적지</label><input type="text" id="dedit-to" placeholder="예) 서울"></div>
+    </div>
+    <div class="form-group"><label>주행거리 (km)</label><input type="number" id="dedit-km" placeholder="예) 350" step="1"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeDriveEditModal()">취소</button>
+      <button class="btn-primary" onclick="saveDriveEdit()">저장</button>
+    </div>
+  </div>
+</div>
+<div class="overlay hidden" id="edit-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">충전 기록 수정</div>
+    <div class="form-group"><label>충전 날짜</label><input type="date" id="edit-date"></div>
+    <div class="form-group"><label>충전 시간</label><input type="time" id="edit-time"></div>
+    <div class="form-group">
+      <label>주유소</label>
+      <div class="station-tabs" id="edit-station-tabs">
+        <button class="station-tab" onclick="selectEditStation('E1')">E1</button>
+        <button class="station-tab" onclick="selectEditStation('SK')">SK</button>
+        <button class="station-tab" onclick="selectEditStation('GS')">GS</button>
+        <button class="station-tab" onclick="selectEditStation('S-oil')">S-oil</button>
+        <button class="station-tab" onclick="selectEditStation('현대')">현대</button>
+      </div>
+    </div>
+    <div class="form-group"><label>메모</label><input type="text" id="edit-memo" placeholder="예) 집 근처"></div>
+    <div class="form-row">
+      <div class="form-group"><label>충전 금액 (원)</label><input type="number" id="edit-amount"></div>
+      <div class="form-group"><label>리터당 가격 (원/L)</label><input type="number" id="edit-price" step="0.1"></div>
+    </div>
+    <div class="form-group"><label>충전량 (자동 계산)</label><input type="number" id="edit-liter" readonly style="color:var(--accent-dark);font-weight:700;background:var(--accent-light);border-color:transparent;"></div>
+    <div class="form-group"><label>계기판 km (충전 직전)</label><input type="number" id="edit-odo" placeholder="예) 45230" step="1"></div>
+    <div class="form-row">
+      <div class="form-group"><label>출발지</label><input type="text" id="edit-from" placeholder="예) 대전"></div>
+      <div class="form-group"><label>목적지</label><input type="text" id="edit-to" placeholder="예) 서울"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeEditModal()">취소</button>
+      <button class="btn-primary" onclick="saveEdit()">저장</button>
+    </div>
+  </div>
+</div>
 <script>
-// ─── DATA ──────────────────────────────────────────────
-const MOODS = [
-  {e:'😊',l:'좋아'},{e:'😄',l:'신남'},{e:'🥰',l:'설렘'},{e:'😌',l:'평온'},
-  {e:'😔',l:'슬픔'},{e:'😤',l:'짜증'},{e:'😴',l:'피곤'},{e:'🤔',l:'고민'}
-];
-const WEATHERS = ['☀️맑음','🌤️구름조금','☁️흐림','🌧️비','⛈️천둥','❄️눈','🌫️안개','🌙밤'];
+const STORAGE_KEY='lpg_records_v3';
+let records=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
+let chart=null,curType='price';
+let selStation='';
+let editStation='';
+let editId=null;
 
-let DB = { diaries:[], pin:'', nextId:1 };
-let editingId = null;
-let calYear, calMonth, selectedCalDate = null;
-let detailFrom = 'home'; // where to go back
-
-function loadDB() {
-  const raw = localStorage.getItem('diary_db');
-  if (raw) DB = JSON.parse(raw);
-  if (!DB.diaries) DB.diaries = [];
-  if (!DB.dailyPhotos) DB.dailyPhotos = {}; // { 'YYYY-MM-DD': {src, memo} }
-  if (!DB.nextId) DB.nextId = (DB.diaries.length ? Math.max(...DB.diaries.map(d=>d.id))+1 : 1);
-}
-function saveDB() {
-  localStorage.setItem('diary_db', JSON.stringify(DB));
+function saveData(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
   githubSave();
+}
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200);}
+function switchTab(t){
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['add','drive','stats','history','settings'][i]===t));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  if(t==='stats')renderStats();
+  if(t==='history')renderHistory();
+  if(t==='drive')renderDriveList();
+  if(t==='settings'){
+    const el=document.getElementById('syncStatus');
+    if(el)el.textContent=getGhToken()?'✅ 토큰 설정됨 · 자동 저장 활성화':'⚠️ 토큰 없음 · 데이터가 언제든 삭제될 수 있어요';
+  }
 }
 
 // ─── GITHUB 동기화 ──────────────────────────────────────────────
-const GH_OWNER = 'beenijua';
-const GH_REPO  = 'diary';
-const GH_FILE  = 'data/diary-data.json';
-const GH_API   = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`;
+const GH_OWNER='beenijua',GH_REPO='lpg',GH_FILE='data/lpg-data.json';
+const GH_API=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`;
+function getGhToken(){return localStorage.getItem('gh_token_lpg')||'';}
 
-function getGhToken() { return localStorage.getItem('gh_token_diary') || ''; }
-
-function saveGhToken() {
-  const t = document.getElementById('ghToken').value.trim();
-  if (!t) { showToast('토큰을 입력해주세요', 'warn'); return; }
-  localStorage.setItem('gh_token_diary', t);
-  document.getElementById('ghToken').value = '';
-  document.getElementById('syncStatus').textContent = '✅ 토큰 저장됐어요! 지금 불러오기를 눌러보세요.';
-  showToast('토큰 저장됐어요 ✅', 'success');
+function saveGhToken(){
+  const t=document.getElementById('ghToken').value.trim();
+  if(!t){showToast('토큰을 입력해주세요');return;}
+  localStorage.setItem('gh_token_lpg',t);
+  document.getElementById('ghToken').value='';
+  document.getElementById('syncStatus').textContent='✅ 토큰 저장됐어요! 지금 불러오기를 눌러보세요.';
+  showToast('토큰 저장됐어요 ✅');
 }
 
-let _ghSaveTimer = null;
-async function githubSave() {
-  const token = getGhToken(); if (!token) return;
-  clearTimeout(_ghSaveTimer);
-  _ghSaveTimer = setTimeout(async () => {
-    try {
-      const jsonStr = JSON.stringify(DB);
-      // 1MB 초과 시 사진 없이 저장
-      if (jsonStr.length > 900000) {
-        const lightDB = {
-          ...DB,
-          diaries: DB.diaries.map(d => ({...d, photos: [], blocks: (d.blocks||[]).map(b => b.type==='photo' ? {...b, src:''} : b)}))
-        };
-        const content = btoa(unescape(encodeURIComponent(JSON.stringify(lightDB))));
-        await _ghPut(token, content);
-        const el = document.getElementById('syncStatus');
-        if (el) el.textContent = '⚠️ 용량 초과로 사진 제외 저장됨';
-        return;
+let _ghTimer=null;
+async function githubSave(){
+  const token=getGhToken();if(!token)return;
+  clearTimeout(_ghTimer);
+  _ghTimer=setTimeout(async()=>{
+    try{
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify({records,drives,exportedAt:new Date().toISOString()}))));
+      let sha='';
+      try{const r=await fetch(GH_API,{headers:{Authorization:`token ${token}`}});if(r.ok){const j=await r.json();sha=j.sha;}}catch(e){}
+      const body={message:'sync: lpg data',content};if(sha)body.sha=sha;
+      const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:`token ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(res.ok){
+        const now=new Date();
+        const el=document.getElementById('syncStatus');
+        if(el)el.textContent=`☁️ 마지막 저장: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
       }
-      const content = btoa(unescape(encodeURIComponent(jsonStr)));
-      await _ghPut(token, content);
-      const now = new Date();
-      const el = document.getElementById('syncStatus');
-      if (el) el.textContent = `☁️ 마지막 저장: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
-    } catch(e) { /* 조용히 실패 */ }
-  }, 1500);
+    }catch(e){}
+  },1000);
 }
 
-async function _ghPut(token, content) {
-  let sha = '';
-  try {
-    const r = await fetch(GH_API, { headers: { Authorization: `token ${token}` } });
-    if (r.ok) { const j = await r.json(); sha = j.sha; }
-  } catch(e) {}
-  const body = { message: 'sync: diary data', content };
-  if (sha) body.sha = sha;
-  await fetch(GH_API, {
-    method: 'PUT',
-    headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-}
-
-async function syncFromGitHub() {
-  const token = getGhToken();
-  if (!token) { showToast('먼저 토큰을 저장해주세요', 'warn'); return; }
-  const el = document.getElementById('syncStatus');
-  if (el) el.textContent = '⏳ 불러오는 중...';
-  try {
-    const res = await fetch(GH_API + '?t=' + Date.now(), {
-      headers: { Authorization: `token ${token}` }
-    });
-    if (!res.ok) {
-      if (res.status === 404) {
-        if (el) el.textContent = '☁️ 저장된 데이터 없음 (처음 사용)';
-        showToast('아직 저장된 데이터가 없어요', 'warn');
-      } else {
-        if (el) el.textContent = '❌ 불러오기 실패 (토큰 확인)';
-      }
+async function syncFromGitHub(){
+  const token=getGhToken();
+  if(!token){showToast('먼저 토큰을 저장해주세요');return;}
+  const el=document.getElementById('syncStatus');
+  if(el)el.textContent='⏳ 불러오는 중...';
+  try{
+    const res=await fetch(GH_API+'?t='+Date.now(),{headers:{Authorization:`token ${token}`}});
+    if(!res.ok){
+      if(el)el.textContent=res.status===404?'☁️ 저장된 데이터 없음 (처음 사용)':'❌ 불러오기 실패 (토큰 확인)';
       return;
     }
-    const j = await res.json();
-    const data = JSON.parse(decodeURIComponent(escape(atob(j.content))));
-    const currentPin = DB.pin;
-    DB = data;
-    DB.pin = currentPin;
-    if (!DB.diaries) DB.diaries = [];
-    if (!DB.nextId) DB.nextId = DB.diaries.length ? Math.max(...DB.diaries.map(d=>d.id))+1 : 1;
-    localStorage.setItem('diary_db', JSON.stringify(DB));
-    renderHome();
-    document.getElementById('totalCount').textContent = DB.diaries.length;
-    if (el) el.textContent = `✅ 일기 ${DB.diaries.length}개 불러왔어요!`;
-    showToast(`일기 ${DB.diaries.length}개 불러왔어요 ✅`, 'success');
-  } catch(e) {
-    if (el) el.textContent = '❌ 오류: ' + e.message;
-  }
-}
-
-function getDiary(id) { return DB.diaries.find(d=>d.id===id); }
-function getDiaryByDate(dateStr) { return DB.diaries.filter(d=>d.date===dateStr); }
-function todayStr() { return new Date().toISOString().split('T')[0]; }
-
-// ─── PIN ──────────────────────────────────────────────
-let pinBuffer = '';
-let pinSetupStage = 0; // 0=check, 1=new, 2=confirm
-let pinSetupFirst = '';
-
-function initPin() {
-  loadDB();
-  if (!DB.pin) {
-    // 최초 - PIN 설정
-    pinSetupStage = 1;
-    document.getElementById('pinSubtitle').textContent = 'PIN을 설정해주세요 (4자리)';
-    document.getElementById('pinSetupHint').style.display = 'block';
-    document.getElementById('pinSetupHint').textContent = '처음 사용 시 새 PIN을 설정해요\n잊어버리지 않도록 기억해두세요!';
-  } else {
-    pinSetupStage = 0;
-    document.getElementById('pinSubtitle').textContent = 'PIN을 입력해주세요';
-  }
-}
-
-function pinInput(n) {
-  if (pinBuffer.length >= 4) return;
-  pinBuffer += n;
-  updatePinDots();
-  if (pinBuffer.length === 4) setTimeout(checkPin, 100);
-}
-function pinDelete() { if (pinBuffer.length > 0) { pinBuffer=pinBuffer.slice(0,-1); updatePinDots(); } }
-function updatePinDots() {
-  for(let i=0;i<4;i++) {
-    const d=document.getElementById('d'+i);
-    d.classList.toggle('filled', i < pinBuffer.length);
-  }
-}
-
-function checkPin() {
-  if (pinSetupStage === 1) {
-    pinSetupFirst = pinBuffer; pinBuffer=''; updatePinDots();
-    pinSetupStage = 2;
-    document.getElementById('pinSubtitle').textContent = 'PIN을 한 번 더 입력해주세요';
-  } else if (pinSetupStage === 2) {
-    if (pinBuffer === pinSetupFirst) {
-      DB.pin = pinBuffer; saveDB(); pinBuffer=''; updatePinDots();
-      unlockApp();
-    } else {
-      showPinError('PIN이 일치하지 않아요'); pinBuffer=''; pinSetupFirst=''; pinSetupStage=1;
-      updatePinDots(); document.getElementById('pinSubtitle').textContent='PIN을 다시 설정해주세요';
-    }
-  } else {
-    if (pinBuffer === DB.pin) { pinBuffer=''; updatePinDots(); unlockApp(); }
-    else { showPinError('PIN이 틀렸어요'); pinBuffer=''; updatePinDots(); }
-  }
-}
-
-function showPinError(msg) {
-  const el=document.getElementById('pinError'); el.textContent=msg; el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'),2000);
-}
-
-function unlockApp() {
-  document.getElementById('pinScreen').classList.add('hidden');
-  document.getElementById('appHeader').style.display='flex';
-  document.getElementById('appMain').style.display='block';
-  document.getElementById('appNav').style.display='flex';
-  initApp();
-}
-
-// ─── APP INIT ──────────────────────────────────────────────
-async function initApp() {
-  const now=new Date(); calYear=now.getFullYear(); calMonth=now.getMonth();
-  renderMoodRow(); renderWeatherRow();
-  document.getElementById('writeDate').value = todayStr();
-  document.getElementById('totalCount').textContent = DB.diaries.length;
-  // 토큰 있으면 GitHub에서 자동 불러오기
-  if (getGhToken()) {
-    await syncFromGitHub();
-  } else {
-    renderHome();
-  }
-}
-
-function renderMoodRow() {
-  document.getElementById('moodRow').innerHTML = MOODS.map((m,i)=>
-    `<div style="position:relative;margin-bottom:18px">
-      <button class="mood-btn" id="mood_${i}" onclick="selectMood(${i})" data-mood="${m.e}">${m.e}
-        <span class="mood-label">${m.l}</span>
-      </button>
-    </div>`).join('');
-}
-function renderWeatherRow() {
-  document.getElementById('weatherRow').innerHTML = WEATHERS.map((w,i)=>
-    `<button class="weather-btn" id="weather_${i}" onclick="selectWeather(${i})" data-weather="${w}">${w}</button>`).join('');
-}
-
-let selectedMoodIdx = -1, selectedWeatherIdx = -1, writePhotos = [], writeTags = [];
-
-function selectMood(idx) {
-  selectedMoodIdx = idx;
-  document.querySelectorAll('.mood-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
-}
-function selectWeather(idx) {
-  selectedWeatherIdx = idx;
-  document.querySelectorAll('.weather-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
-}
-
-// ─── 쓰기 모드 ──────────────────────────────────────────────
-let writeMode = 'block'; // 'block' | 'gallery'
-let blocks = []; // [{id, type:'text'|'photo', content:'', src:''}]
-let galleryPhotos = []; // 사진모음 모드용
-
-function selectWriteMode(mode) {
-  writeMode = mode;
-  document.getElementById('modeTabBlock').classList.toggle('active', mode==='block');
-  document.getElementById('modeTabGallery').classList.toggle('active', mode==='gallery');
-  document.getElementById('blockModeArea').style.display = mode==='block' ? 'block' : 'none';
-  document.getElementById('galleryModeArea').style.display = mode==='gallery' ? 'block' : 'none';
-}
-
-// ─── 블록 모드 ──────────────────────────────────────────────
-let blockIdCounter = 0;
-
-function addBlock(type, content='', src='') {
-  const id = 'b' + (blockIdCounter++);
-  blocks.push({id, type, content, src});
-  renderBlocks();
-  // 텍스트 블록이면 자동 포커스
-  if (type === 'text') {
-    setTimeout(() => {
-      const ta = document.getElementById('bt_'+id);
-      if (ta) ta.focus();
-    }, 100);
-  } else {
-    // 사진 블록이면 바로 파일 선택
-    if (!src) triggerBlockPhoto(id);
-  }
-}
-
-function renderBlocks() {
-  const el = document.getElementById('blockList');
-  if (!blocks.length) { el.innerHTML = ''; return; }
-  el.innerHTML = blocks.map((b, i) => {
-    const isFirst = i === 0, isLast = i === blocks.length - 1;
-    const ctrl = `<div class="block-controls">
-      <div class="block-ctrl-left">
-        <button class="block-ctrl-btn" onclick="moveBlock('${b.id}',-1)" ${isFirst?'disabled style="opacity:.3"':''}>↑</button>
-        <button class="block-ctrl-btn" onclick="moveBlock('${b.id}',1)" ${isLast?'disabled style="opacity:.3"':''}>↓</button>
-        <span style="font-size:11px;color:var(--text-muted);padding:0 4px;">${b.type==='text'?'텍스트':'사진'}</span>
-      </div>
-      <button class="block-ctrl-btn" style="color:#E05252" onclick="removeBlock('${b.id}')">✕</button>
-    </div>`;
-    if (b.type === 'text') {
-      return `<div class="block-item">${ctrl}
-        <textarea class="block-text-area" id="bt_${b.id}" placeholder="여기에 내용을 입력해요..."
-          oninput="updateBlockContent('${b.id}',this.value)">${b.content}</textarea>
-      </div>`;
-    } else {
-      return `<div class="block-item">${ctrl}
-        <div class="block-photo-wrap" style="position:relative">
-          <input type="file" id="bpf_${b.id}" accept="image/*" style="display:none" onchange="handleBlockPhoto('${b.id}',event)">
-          ${b.src
-            ? `<img class="block-photo-img" src="${b.src}" onclick="openBlockPhotoLightbox('${b.id}')" alt="">
-               <button onclick="event.stopPropagation();triggerBlockPhoto('${b.id}')" style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.5);border:none;color:white;border-radius:10px;padding:5px 10px;font-size:12px;cursor:pointer;">변경</button>`
-            : `<div class="block-photo-placeholder" onclick="triggerBlockPhoto('${b.id}')">📷 탭해서 사진 추가</div>`}
-        </div>
-      </div>`;
-    }
-  }).join('');
-}
-
-function openBlockPhotoLightbox(id) {
-  const b = blocks.find(x=>x.id===id);
-  if (b && b.src) {
-    const allSrcs = blocks.filter(x=>x.type==='photo'&&x.src).map(x=>x.src);
-    const idx = allSrcs.indexOf(b.src);
-    openLightbox(allSrcs, idx >= 0 ? idx : 0);
-  }
-}
-
-function updateBlockContent(id, val) {
-  const b = blocks.find(x=>x.id===id);
-  if (b) b.content = val;
-}
-
-function moveBlock(id, dir) {
-  const i = blocks.findIndex(x=>x.id===id);
-  if (i < 0) return;
-  const ni = i + dir;
-  if (ni < 0 || ni >= blocks.length) return;
-  [blocks[i], blocks[ni]] = [blocks[ni], blocks[i]];
-  renderBlocks();
-}
-
-function removeBlock(id) {
-  blocks = blocks.filter(x=>x.id!==id);
-  renderBlocks();
-}
-
-function triggerBlockPhoto(id) {
-  const inp = document.getElementById('bpf_'+id);
-  if (inp) inp.click();
-}
-
-function handleBlockPhoto(id, e) {
-  const file = e.target.files[0]; if (!file) return;
-  compressPhoto(file, src => {
-    const b = blocks.find(x=>x.id===id);
-    if (b) { b.src = src; renderBlocks(); }
-  });
-  e.target.value = '';
-}
-
-// ─── 사진모음 모드 ──────────────────────────────────────────────
-function handleGalleryPhotos(e) {
-  const files = Array.from(e.target.files);
-  if (galleryPhotos.length + files.length > 4) { showToast('사진모음은 최대 4장이에요', 'warn'); return; }
-  // 순차 처리 - 한 장씩
-  let i = 0;
-  function processNext() {
-    if (i >= files.length) { showToast('사진이 추가됐어요 ✅', 'success'); return; }
-    compressPhoto(files[i++], src => {
-      galleryPhotos.push(src);
-      renderPhotoSortList();
-      processNext();
-    });
-  }
-  processNext();
-  e.target.value = '';
-}
-
-function renderPhotoSortList() {
-  const el = document.getElementById('photoSortList');
-  if (!galleryPhotos.length) { el.innerHTML = ''; return; }
-  el.innerHTML = galleryPhotos.map((src, i) => `
-    <div class="photo-sort-item">
-      <img class="photo-sort-img" src="${src}" onclick="openLightbox(galleryPhotos,${i})" alt="">
-      <div class="photo-sort-info">${i+1}번째 사진</div>
-      <div class="photo-sort-btns">
-        <button class="photo-sort-btn" onclick="moveGalleryPhoto(${i},-1)" ${i===0?'disabled':''}>↑</button>
-        <button class="photo-sort-btn" onclick="moveGalleryPhoto(${i},1)" ${i===galleryPhotos.length-1?'disabled':''}>↓</button>
-        <button class="photo-sort-del" onclick="removeGalleryPhoto(${i})">✕</button>
-      </div>
-    </div>`).join('');
-}
-
-function moveGalleryPhoto(i, dir) {
-  const ni = i + dir;
-  if (ni < 0 || ni >= galleryPhotos.length) return;
-  [galleryPhotos[i], galleryPhotos[ni]] = [galleryPhotos[ni], galleryPhotos[i]];
-  renderPhotoSortList();
-}
-
-function removeGalleryPhoto(i) {
-  galleryPhotos.splice(i, 1);
-  renderPhotoSortList();
-}
-
-// ─── NAVIGATION ──────────────────────────────────────────────
-const NAV_PAGES = ['home','calendar','photo','write','settings'];
-function showPage(name) {
-  ['home','calendar','photo','write','search','settings','detail'].forEach(p=>{
-    const el=document.getElementById('page-'+p);
-    if(el){el.classList.remove('active');if(p==='write')el.style.display='none';}
-  });
-  NAV_PAGES.forEach(p=>{
-    const nb=document.getElementById('nav'+p.charAt(0).toUpperCase()+p.slice(1));
-    if(nb) nb.classList.remove('active');
-  });
-  const pg=document.getElementById('page-'+name);
-  if(pg){pg.classList.add('active');if(name==='write')pg.style.display='flex';}
-  const nb=document.getElementById('nav'+name.charAt(0).toUpperCase()+name.slice(1));
-  if(nb) nb.classList.add('active');
-  if(name==='home')     renderHome();
-  if(name==='calendar') renderCalendar();
-  if(name==='photo')    renderPhotoTab();
-  if(name==='settings') {
-    document.getElementById('totalCount').textContent=DB.diaries.length;
-    const el = document.getElementById('syncStatus');
-    if (el) {
-      el.textContent = getGhToken()
-        ? '✅ 토큰 설정됨 · 자동 저장 활성화'
-        : '⚠️ 토큰 없음 · 데이터가 언제든 삭제될 수 있어요';
-    }
-  }
-}
-
-function openWrite(id=null) {
-  editingId = id;
-  blocks = []; blockIdCounter = 0;
-  galleryPhotos = []; writeTags = [];
-  selectedMoodIdx = -1; selectedWeatherIdx = -1;
-  document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.weather-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('writeTitle').value = '';
-  document.getElementById('writeTags').innerHTML = '';
-  document.getElementById('tagInput').value = '';
-  document.getElementById('writeDate').value = todayStr();
-  document.getElementById('writeToolbarTitle').textContent = id ? '일기 수정' : '새 일기';
-
-  if (id) {
-    const d = getDiary(id);
-    if (d) {
-      document.getElementById('writeDate').value = d.date;
-      document.getElementById('writeTitle').value = d.title||'';
-      if (d.mood !== undefined) { selectedMoodIdx=d.mood; const mb=document.getElementById('mood_'+d.mood); if(mb)mb.classList.add('active'); }
-      if (d.weather !== undefined) { selectedWeatherIdx=d.weather; const wb=document.getElementById('weather_'+d.weather); if(wb)wb.classList.add('active'); }
-      writeTags = d.tags ? [...d.tags] : [];
-      renderWriteTags();
-
-      // 모드 복원
-      if (d.mode === 'gallery') {
-        galleryPhotos = d.photos ? [...d.photos] : [];
-        document.getElementById('galleryBody').value = d.body || '';
-        selectWriteMode('gallery');
-        renderPhotoSortList();
-      } else {
-        // 블록 모드 복원
-        if (d.blocks && d.blocks.length) {
-          blocks = d.blocks.map(b => ({...b, id:'b'+(blockIdCounter++)}));
-        } else {
-          // 구 버전 일기 → 텍스트 블록으로 변환
-          if (d.body) addBlock('text', d.body);
-          if (d.photos?.length) d.photos.forEach(src => blocks.push({id:'b'+(blockIdCounter++),type:'photo',content:'',src}));
-        }
-        selectWriteMode('block');
-        renderBlocks();
+    const j=await res.json();
+    const data=JSON.parse(decodeURIComponent(escape(atob(j.content))));
+    if(data.records){
+      records=data.records;
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+      if(data.drives){
+        drives=data.drives;
+        localStorage.setItem('lpg_drives',JSON.stringify(drives));
       }
+      updateHeader();renderHistory();
+      if(el)el.textContent=`✅ 충전 ${records.length}개, 주행 ${drives.length}개 불러왔어요!`;
+      showToast(`데이터 불러왔어요 ✅`);
     }
-  } else {
-    // 새 일기: 기본 텍스트 블록 하나
-    selectWriteMode('block');
-    addBlock('text');
-  }
-
-  showPage('write');
-  document.getElementById('appMain').scrollTop = 0;
+  }catch(e){if(el)el.textContent='❌ 오류: '+e.message;}
 }
 
-function cancelWrite() {
-  editingId = null;
-  showPage('home');
+function selectStation(name){
+  selStation=name;
+  document.querySelectorAll('#station-tabs .station-tab').forEach(b=>b.classList.toggle('active',b.textContent===name));
+}
+function selectEditStation(name){
+  editStation=name;
+  document.querySelectorAll('#edit-station-tabs .station-tab').forEach(b=>b.classList.toggle('active',b.textContent===name));
 }
 
-function saveDiary() {
-  let body = '', photos = [], blocksData = [];
-
-  if (writeMode === 'block') {
-    // 텍스트 합쳐서 body, 사진 모음
-    blocksData = blocks.map(b => ({type:b.type, content:b.content||'', src:b.src||''}));
-    body = blocks.filter(b=>b.type==='text').map(b=>b.content).join('\n').trim();
-    photos = blocks.filter(b=>b.type==='photo'&&b.src).map(b=>b.src);
-    if (!body && !photos.length) { showToast('내용을 입력해주세요', 'warn'); return; }
-  } else {
-    body = document.getElementById('galleryBody').value.trim();
-    photos = [...galleryPhotos];
-    blocksData = [];
-    if (!body && !photos.length) { showToast('내용이나 사진을 추가해주세요', 'warn'); return; }
-  }
-
-  const date = document.getElementById('writeDate').value || todayStr();
-  const title = document.getElementById('writeTitle').value.trim();
-
-  const entry = {
-    id: editingId || DB.nextId++,
-    date, title, body, photos,
-    mode: writeMode,
-    blocks: writeMode==='block' ? blocksData : [],
-    mood: selectedMoodIdx >= 0 ? selectedMoodIdx : undefined,
-    weather: selectedWeatherIdx >= 0 ? selectedWeatherIdx : undefined,
-    tags: [...writeTags],
-    createdAt: editingId ? getDiary(editingId)?.createdAt : new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  try {
-    if (editingId) {
-      const idx = DB.diaries.findIndex(d=>d.id===editingId);
-      if(idx>=0) DB.diaries[idx] = entry;
-    } else {
-      DB.diaries.unshift(entry);
-    }
-    DB.diaries.sort((a,b)=>b.date.localeCompare(a.date));
-    saveDB();
-  } catch(e) {
-    showToast('저장 실패 — 사진 용량을 줄여보세요', 'warn'); return;
-  }
-
-  editingId = null;
-  showToast('일기를 저장했어요 🌿', 'success');
-  showPage('home');
-}
-
-// ─── PHOTOS (공통 압축) ──────────────────────────────────────────────
-function compressPhoto(file, callback) {
-  // 처리 중 표시
-  showToast('사진 처리 중...', '');
-  // setTimeout으로 UI 먼저 업데이트 후 처리
-  setTimeout(() => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 800; // 크기 제한 줄임
-        let w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-          else { w = Math.round(w * MAX / h); h = MAX; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        callback(canvas.toDataURL('image/jpeg', 0.6)); // 품질 낮춤
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  }, 50);
-}
-
-// ─── TAGS ──────────────────────────────────────────────
-function addTag() {
-  let val = document.getElementById('tagInput').value.trim().replace(/^#/,'');
-  if (!val || writeTags.length >= 5) return;
-  if (!writeTags.includes(val)) { writeTags.push(val); renderWriteTags(); }
-  document.getElementById('tagInput').value = '';
-}
-function renderWriteTags() {
-  document.getElementById('writeTags').innerHTML = writeTags.map((t,i)=>
-    `<span class="write-tag">#${t}<button class="write-tag-del" onclick="removeTag(${i})">✕</button></span>`).join('');
-}
-function removeTag(idx) { writeTags.splice(idx,1); renderWriteTags(); }
-
-// ─── HOME ──────────────────────────────────────────────
-function renderHome() {
-  const now = new Date();
-  const hours = now.getHours();
-  const greet = hours < 6 ? '밤이 깊었네요 🌙' : hours < 12 ? '좋은 아침이에요 🌅' : hours < 18 ? '좋은 오후예요 ☀️' : '오늘 하루는 어땠나요? 🌿';
-  document.getElementById('bannerGreeting').textContent = greet;
-
-  const days=['일','월','화','수','목','금','토'];
-  document.getElementById('bannerSub').textContent =
-    `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
-
-  // 연속 작성 streak
-  let streak = 0;
-  const d = new Date();
-  while (true) {
-    const k=d.toISOString().split('T')[0];
-    if(getDiaryByDate(k).length) { streak++; d.setDate(d.getDate()-1); }
-    else break;
-  }
-  document.getElementById('streakText').textContent =
-    streak > 1 ? `${streak}일 연속 작성 중! 🔥` : '오늘도 일기를 써봐요';
-
-  // 1년 전 오늘
-  const ly = new Date(now); ly.setFullYear(ly.getFullYear()-1);
-  const lyKey = ly.toISOString().split('T')[0];
-  const memories = getDiaryByDate(lyKey);
-  const mc = document.getElementById('memoryCard');
-  if (memories.length) {
-    mc.style.display='block';
-    mc.innerHTML=`<div class="memory-card" onclick="openDiary(${memories[0].id},'home')">
-      <div class="memory-label">🕰️ 1년 전 오늘</div>
-      <div class="memory-title">${memories[0].mood!==undefined?MOODS[memories[0].mood].e+' ':''}${memories[0].title||'제목 없음'}</div>
-      <div class="memory-preview">${memories[0].body}</div>
-    </div>`;
-  } else mc.style.display='none';
-
-  // 최근 일기
-  const recent = DB.diaries.slice(0, 20);
-  const el = document.getElementById('recentList');
-  const empty = document.getElementById('homeEmpty');
-  if (!recent.length) { el.innerHTML=''; empty.style.display='block'; return; }
-  empty.style.display='none';
-  el.innerHTML = recent.map(d => diaryCardHTML(d)).join('');
-}
-
-function diaryCardHTML(d) {
-  const dateObj = new Date(d.date+'T00:00:00');
-  const days2=['일','월','화','수','목','금','토'];
-  const dateLabel=`${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${days2[dateObj.getDay()]})`;
-  const moodEmoji = d.mood!==undefined ? MOODS[d.mood].e : '';
-  const weatherStr = d.weather!==undefined ? WEATHERS[d.weather] : '';
-  const photoStrip = d.photos?.length ?
-    `<div class="diary-photo-strip">${d.photos.map(s=>`<img class="diary-photo-thumb" src="${s}" alt="" onclick="openLightbox('${s}');event.stopPropagation()">`).join('')}</div>` : '';
-  const tags = d.tags?.length ? d.tags.map(t=>`<span class="tag-chip">#${t}</span>`).join('') : '';
-  return `<div class="diary-card" onclick="openDiary(${d.id},'home')">
-    <div class="diary-card-top">
-      <span class="diary-card-date">${dateLabel}</span>
-      <span class="diary-card-mood">${moodEmoji}</span>
-    </div>
-    ${photoStrip}
-    ${d.title?`<div class="diary-card-title">${d.title}</div>`:''}
-    <div class="diary-card-preview">${d.body}</div>
-    <div class="diary-card-bottom">${tags}${weatherStr?`<span class="weather-chip">${weatherStr}</span>`:''}</div>
-  </div>`;
-}
-
-// ─── DETAIL ──────────────────────────────────────────────
-let currentDetailId = null;
-function openDiary(id, from='home') {
-  detailFrom = from;
-  currentDetailId = id;
-  const d = getDiary(id);
-  if (!d) return;
-  const dateObj=new Date(d.date+'T00:00:00');
-  const days2=['일','월','화','수','목','금','토'];
-  const dateLabel=`${dateObj.getFullYear()}년 ${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${days2[dateObj.getDay()]})`;
-  const moodEmoji=d.mood!==undefined?MOODS[d.mood].e:'';
-  const weatherStr=d.weather!==undefined?WEATHERS[d.weather]:'';
-  const tags=d.tags?.length?`<div class="detail-tags">${d.tags.map(t=>`<span class="tag-chip">#${t}</span>`).join('')}</div>`:'';
-
-  let contentHTML = '';
-
-  if (d.mode === 'block' && d.blocks?.length) {
-    // 블록 모드 렌더링
-    const allPhotos = d.blocks.filter(b=>b.type==='photo'&&b.src).map(b=>b.src);
-    contentHTML = d.blocks.map(b => {
-      if (b.type === 'text') {
-        return `<div class="detail-body" style="margin-bottom:12px;">${b.content.replace(/\n/g,'<br>')}</div>`;
-      } else if (b.type === 'photo' && b.src) {
-        const idx = allPhotos.indexOf(b.src);
-        return `<div style="margin-bottom:10px;border-radius:16px;overflow:hidden;">
-          <img src="${b.src}" style="width:100%;max-height:280px;object-fit:cover;display:block;cursor:pointer;border-radius:16px;"
-            onclick="openLightbox(${JSON.stringify(allPhotos)},${idx})">
-        </div>`;
-      }
-      return '';
-    }).join('');
-  } else if (d.mode === 'gallery' || !d.mode) {
-    const photos = d.photos || [];
-    let photosHTML = '';
-    if (photos.length === 1) {
-      photosHTML = `<div style="margin-bottom:16px;">
-        <img src="${photos[0]}" style="width:100%;max-height:300px;object-fit:cover;border-radius:16px;display:block;cursor:pointer;"
-          onclick="openLightbox(${JSON.stringify(photos)},0)">
-      </div>`;
-    } else if (photos.length === 2) {
-      photosHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:16px;border-radius:16px;overflow:hidden;">
-        ${photos.map((s,i)=>`<img src="${s}" style="width:100%;height:180px;object-fit:cover;cursor:pointer;"
-          onclick="openLightbox(${JSON.stringify(photos)},${i})">`).join('')}
-      </div>`;
-    } else if (photos.length === 3) {
-      photosHTML = `<div style="margin-bottom:16px;border-radius:16px;overflow:hidden;">
-        <img src="${photos[0]}" style="width:100%;height:200px;object-fit:cover;display:block;cursor:pointer;"
-          onclick="openLightbox(${JSON.stringify(photos)},0)">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:2px;">
-          ${photos.slice(1).map((s,i)=>`<img src="${s}" style="width:100%;height:130px;object-fit:cover;cursor:pointer;"
-            onclick="openLightbox(${JSON.stringify(photos)},${i+1})">`).join('')}
-        </div>
-      </div>`;
-    } else if (photos.length === 4) {
-      photosHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:16px;border-radius:16px;overflow:hidden;">
-        ${photos.map((s,i)=>`<img src="${s}" style="width:100%;height:160px;object-fit:cover;cursor:pointer;"
-          onclick="openLightbox(${JSON.stringify(photos)},${i})">`).join('')}
-      </div>`;
-    }
-    contentHTML = `${photosHTML}<div class="detail-body">${(d.body||'').replace(/\n/g,'<br>')}</div>`;
-  }
-
-  document.getElementById('detailContent').innerHTML=`
-    <div class="detail-meta">
-      <span class="detail-date">${dateLabel}</span>
-      ${moodEmoji?`<span class="detail-mood-big">${moodEmoji}</span>`:''}
-      ${weatherStr?`<span style="font-size:14px;color:var(--text-muted)">${weatherStr}</span>`:''}
-    </div>
-    ${d.title?`<div class="detail-title">${d.title}</div>`:''}
-    ${contentHTML}
-    ${tags}`;
-  showPage('detail');
-}
-
-function backFromDetail() { showPage(detailFrom==='calendar'?'calendar':'home'); }
-function editCurrentDiary() { if(currentDetailId){ detailFrom='detail'; openWrite(currentDetailId); } }
-function deleteCurrentDiary() {
-  if(!currentDetailId) return;
-  if(!confirm('이 일기를 삭제할까요?')) return;
-  DB.diaries = DB.diaries.filter(d=>d.id!==currentDetailId);
-  saveDB(); currentDetailId=null;
-  showToast('삭제했어요');
-  showPage(detailFrom==='calendar'?'calendar':'home');
-}
-
-// ─── CALENDAR ──────────────────────────────────────────────
-function renderCalendar() {
-  const now=new Date();
-  const months=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  document.getElementById('calMonthLabel').textContent=`${calYear}년 ${months[calMonth]}`;
-  const firstDay=new Date(calYear,calMonth,1).getDay();
-  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
-  const prevDays=new Date(calYear,calMonth,0).getDate();
-  const todayKey=now.toISOString().split('T')[0];
-  const grid=document.getElementById('calGrid'); grid.innerHTML='';
-  // prev month
-  for(let i=firstDay-1;i>=0;i--){
-    const div=document.createElement('div'); div.className='cal-day other-month';
-    div.innerHTML=`<span class="cal-day-num">${prevDays-i}</span>`;
-    grid.appendChild(div);
-  }
-  for(let d=1;d<=daysInMonth;d++){
-    const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const entries=getDiaryByDate(key);
-    const isToday=key===todayKey;
-    const isSelected=key===selectedCalDate;
-    const div=document.createElement('div');
-    div.className='cal-day'+(entries.length?' has-entry':'')+(isToday?' today':'')+(isSelected?' selected':'');
-    const firstMood=entries[0]?.mood;
-    div.innerHTML=`<span class="cal-day-num">${d}</span>${firstMood!==undefined?`<span class="cal-day-mood">${MOODS[firstMood].e}</span>`:''}`;
-    div.onclick=()=>selectCalDate(key);
-    grid.appendChild(div);
-  }
-  // next month fill
-  const total=firstDay+daysInMonth; const remain=(7-total%7)%7;
-  for(let i=1;i<=remain;i++){
-    const div=document.createElement('div'); div.className='cal-day other-month';
-    div.innerHTML=`<span class="cal-day-num">${i}</span>`;
-    grid.appendChild(div);
-  }
-  if(selectedCalDate) renderCalDetail(selectedCalDate);
-}
-function selectCalDate(dateStr){
-  selectedCalDate=dateStr; renderCalendar();
-  renderCalDetail(dateStr);
-}
-function renderCalDetail(dateStr){
-  const entries=getDiaryByDate(dateStr);
-  const el=document.getElementById('calDetail');
-  if(!entries.length){el.innerHTML=`<div class="cal-detail-empty">이 날은 일기가 없어요<br><button style="margin-top:8px;background:var(--green-mist);border:1px solid var(--border);border-radius:10px;padding:6px 14px;font-size:13px;color:var(--green-deep);cursor:pointer;font-family:'Noto Sans KR',sans-serif" onclick="openWriteDate('${dateStr}')">✍️ 일기 쓰기</button></div>`;return;}
-  el.innerHTML=entries.map(d=>`<div style="cursor:pointer;padding:6px 0;border-bottom:1px solid var(--border-light)" onclick="openDiary(${d.id},'calendar')">
-    <div style="display:flex;align-items:center;gap:8px">
-      ${d.mood!==undefined?`<span style="font-size:18px">${MOODS[d.mood].e}</span>`:''}
-      <div>
-        <div style="font-size:14px;font-weight:600;color:var(--text)">${d.title||d.body.slice(0,20)+'…'}</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${d.body.slice(0,40)}…</div>
-      </div>
-    </div>
-  </div>`).join('');
-}
-function openWriteDate(dateStr){
-  openWrite(); document.getElementById('writeDate').value=dateStr;
-}
-function changeCalMonth(delta){
-  calMonth+=delta;
-  if(calMonth<0){calMonth=11;calYear--;}
-  if(calMonth>11){calMonth=0;calYear++;}
-  selectedCalDate=null; renderCalendar();
-}
-
-// ─── SEARCH ──────────────────────────────────────────────
-function doSearch(){
-  const q=document.getElementById('searchInput').value.trim().toLowerCase();
-  const el=document.getElementById('searchResults');
-  if(!q){el.innerHTML='<div class="search-empty"><div class="search-empty-icon">🔍</div><div style="font-size:14px;color:var(--text-muted)">검색어를 입력해보세요</div></div>';return;}
-  const results=DB.diaries.filter(d=>
-    d.body.toLowerCase().includes(q)||
-    (d.title||'').toLowerCase().includes(q)||
-    (d.tags||[]).some(t=>t.toLowerCase().includes(q))
-  );
-  if(!results.length){el.innerHTML='<div class="search-empty"><div class="search-empty-icon">😔</div><div style="font-size:14px;color:var(--text-muted)">검색 결과가 없어요</div></div>';return;}
-  el.innerHTML=results.map(d=>diaryCardHTML(d)).join('');
-  // 결과 카드 클릭 이벤트 재설정은 onclick으로 인라인 처리됨
-}
-
-// ─── SETTINGS ──────────────────────────────────────────────
-function changePin(){
-  const newPin=document.getElementById('newPinInput').value;
-  if(!/^\d{4}$/.test(newPin)){showToast('4자리 숫자를 입력해주세요','warn');return;}
-  DB.pin=newPin; saveDB();
-  document.getElementById('newPinInput').value='';
-  showToast('PIN이 변경됐어요 🔒','success');
-}
-function exportData(){
-  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+function backupData(){
+  const data={records,drives,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url;
-  a.download=`일기장_백업_${todayStr()}.json`; a.click();
-  URL.revokeObjectURL(url);
-  showToast('📤 백업 완료!','success');
+  const a=document.createElement('a');a.href=url;a.download='lpg-backup.json';a.click();
+  URL.revokeObjectURL(url);showToast('백업 저장됐어요!');
 }
-function importData(e){
-  const file=e.target.files[0]; if(!file) return;
-  const r=new FileReader();
-  r.onload=(ev)=>{
+function restoreData(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
     try{
       const data=JSON.parse(ev.target.result);
-      if(!data.diaries){ showToast('올바른 백업 파일이 아니에요','warn'); return; }
-      const currentPin = DB.pin; // PIN은 유지
-      DB = data;
-      DB.pin = currentPin; // 현재 PIN으로 덮어쓰기
-      if(!DB.nextId) DB.nextId = DB.diaries.length ? Math.max(...DB.diaries.map(d=>d.id))+1 : 1;
-      saveDB();
-      renderHome();
-      showToast(`📥 일기 ${DB.diaries.length}개 가져왔어요!`,'success');
-    } catch(err) {
-      showToast('파일을 읽을 수 없어요','warn');
-    }
-    e.target.value='';
+      if(!data.records){showToast('올바른 백업 파일이 아니에요');return;}
+      if(!confirm('현재 데이터를 백업으로 교체할까요?'))return;
+      records=data.records;
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+      if(data.drives){
+        drives=data.drives;
+        localStorage.setItem('lpg_drives',JSON.stringify(drives));
+      }
+      updateHeader();showToast('복원 완료! (충전 '+records.length+'개, 주행 '+(drives.length)+'개)');
+    }catch{showToast('파일을 읽을 수 없어요');}
   };
-  r.readAsText(file);
-}
-function resetAll(){
-  if(!confirm('모든 일기를 삭제할까요?\n되돌릴 수 없어요!')) return;
-  DB={diaries:[],pin:DB.pin,nextId:1}; saveDB();
-  renderHome(); showToast('초기화 완료');
+  reader.readAsText(file);e.target.value='';
 }
 
-// ─── PHOTO TAB ──────────────────────────────────────────────
-function renderPhotoTab() {
-  const today = todayStr();
-  const el = document.getElementById('photoContent');
-  const todayPhoto = DB.dailyPhotos[today];
-  const allPhotos = Object.entries(DB.dailyPhotos).sort((a,b)=>b[0].localeCompare(a[0]));
+document.getElementById('inp-date').value=new Date().toISOString().split('T')[0];
+document.getElementById('inp-time').value=new Date().toTimeString().slice(0,5);
+document.getElementById('drv-date').value=new Date().toISOString().split('T')[0];
+document.getElementById('drv-time').value=new Date().toTimeString().slice(0,5);
+['inp-amount','inp-price'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
+  const a=parseFloat(document.getElementById('inp-amount').value);
+  const p=parseFloat(document.getElementById('inp-price').value);
+  document.getElementById('inp-liter').value=(a>0&&p>0)?(a/p).toFixed(2):'';
+}));
+['edit-amount','edit-price'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
+  const a=parseFloat(document.getElementById('edit-amount').value);
+  const p=parseFloat(document.getElementById('edit-price').value);
+  document.getElementById('edit-liter').value=(a>0&&p>0)?(a/p).toFixed(2):'';
+}));
 
-  el.innerHTML = `
-    <!-- 오늘 업로드 영역 -->
-    <div style="background:var(--white);border-bottom:1px solid var(--border-light);padding:14px 16px;display:flex;align-items:center;gap:12px;">
-      <div onclick="document.getElementById('photoAddInput').click()" style="width:60px;height:60px;border-radius:50%;overflow:hidden;flex-shrink:0;cursor:pointer;border:2px dashed ${todayPhoto?'var(--green)':'var(--border)'};background:var(--green-mist);display:flex;align-items:center;justify-content:center;">
-        ${todayPhoto
-          ? `<img src="${todayPhoto.src}" style="width:100%;height:100%;object-fit:cover;display:block;">`
-          : `<span style="font-size:22px;">+</span>`}
-      </div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;">${todayPhoto ? '오늘 사진 ✅' : '오늘 사진 추가하기'}</div>
-        <div style="font-size:11px;color:var(--text-muted);">${todayPhoto ? '탭해서 변경할 수 있어요' : '하루 한 장씩 기록해요'}</div>
-      </div>
-      ${todayPhoto ? `<button onclick="document.getElementById('photoAddInput').click()" style="background:var(--green-mist);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-size:12px;color:var(--green-deep);cursor:pointer;font-family:'Noto Sans KR',sans-serif;">변경</button>` : ''}
-    </div>
-
-    ${!allPhotos.length ? `
-    <div style="text-align:center;padding:60px 20px;color:var(--text-muted);">
-      <div style="font-size:48px;margin-bottom:12px;">📷</div>
-      <div style="font-size:14px;line-height:1.8;">아직 사진이 없어요<br>오늘 첫 사진을 올려보세요!</div>
-    </div>` : `
-    <!-- 갤러리 그리드 -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;">
-      ${allPhotos.map(([dateStr, p]) => `
-        <div style="aspect-ratio:1;overflow:hidden;cursor:pointer;position:relative;background:var(--green-pale);"
-          onclick="openPhotoDetail('${dateStr}')">
-          <img src="${p.src}" style="width:100%;height:100%;object-fit:cover;display:block;">
-          ${dateStr === today ? `<div style="position:absolute;top:4px;right:4px;background:var(--green);border-radius:6px;padding:2px 6px;font-size:9px;color:white;font-weight:700;">오늘</div>` : ''}
-        </div>`).join('')}
-    </div>`}
-  `;
+function saveRecord(){
+  const date=document.getElementById('inp-date').value;
+  const time=document.getElementById('inp-time').value;
+  const amount=parseFloat(document.getElementById('inp-amount').value);
+  const price=parseFloat(document.getElementById('inp-price').value);
+  const liter=parseFloat(document.getElementById('inp-liter').value);
+  const memo=document.getElementById('inp-memo').value.trim();
+  if(!date||!amount||!price){showToast('날짜, 금액, 리터당 가격을 입력해주세요');return;}
+  if(!selStation){showToast('주유소를 선택해주세요');return;}
+  records.unshift({id:Date.now(),date,time,station:selStation,amount,liter,pricePerL:price,memo});
+  saveData();
+  ['inp-amount','inp-liter','inp-price','inp-memo'].forEach(id=>document.getElementById(id).value='');
+  selStation='';
+  document.querySelectorAll('#station-tabs .station-tab').forEach(b=>b.classList.remove('active'));
+  updateHeader();showToast('충전 기록이 저장됐어요!');switchTab('history');
 }
 
-function openPhotoDetail(dateStr) {
-  const p = DB.dailyPhotos[dateStr]; if (!p) return;
-  const days=['일','월','화','수','목','금','토'];
-  const d = new Date(dateStr+'T00:00:00');
-  const label = `${d.getMonth()+1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
-  const overlay = document.createElement('div');
-  overlay.id = 'photoDetailOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:800;display:flex;flex-direction:column;';
-  overlay.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:rgba(0,0,0,.5);">
-      <button onclick="document.getElementById('photoDetailOverlay').remove()" style="background:none;border:none;color:white;font-size:22px;cursor:pointer;">←</button>
-      <span style="font-family:'Noto Serif KR',serif;font-size:14px;color:rgba(255,255,255,.8);">${label}</span>
-      <div style="width:32px;"></div>
-    </div>
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px;">
-      <img src="${p.src}" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:8px;display:block;">
-    </div>
-    ${p.memo ? `<div style="padding:16px 20px;background:rgba(0,0,0,.5);font-size:14px;color:rgba(255,255,255,.8);line-height:1.6;text-align:center;">${p.memo}</div>` : ''}
-  `;
-  document.body.appendChild(overlay);
+// ─── 주행 기록 ──────────────────────────────────────────────
+let drives=JSON.parse(localStorage.getItem('lpg_drives')||'[]');
+function saveDrives(){localStorage.setItem('lpg_drives',JSON.stringify(drives));githubSaveDrives();}
+
+function saveDrive(){
+  const date=document.getElementById('drv-date').value;
+  const time=document.getElementById('drv-time').value;
+  const from=document.getElementById('drv-from').value.trim();
+  const to=document.getElementById('drv-to').value.trim();
+  const km=parseFloat(document.getElementById('drv-km').value);
+  if(!date||!km){showToast('날짜와 주행거리를 입력해주세요');return;}
+  drives.unshift({id:Date.now(),date,time,from,to,km});
+  saveDrives();
+  ['drv-from','drv-to','drv-km'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('drv-time').value=new Date().toTimeString().slice(0,5);
+  renderDriveList();showToast('주행 기록이 저장됐어요!');
 }
 
-function handleDailyPhoto(e, isChange) {
-  const file = e.target.files[0]; if (!file) return;
-  compressPhoto(file, src => {
-    const today = todayStr();
-    const memo = DB.dailyPhotos[today]?.memo || '';
-    DB.dailyPhotos[today] = { src, memo };
-    saveDB(); renderPhotoTab();
-    showToast('사진 저장됐어요 🌿', 'success');
-  });
-  e.target.value = '';
-}
-let _lbPhotos = [], _lbIdx = 0;
-let _lbTouchX = null;
+let drvSelMonth='';
+let drvSelWeek=1;
 
-function openLightbox(photos, idx) {
-  _lbPhotos = Array.isArray(photos) ? photos : [photos];
-  _lbIdx = typeof idx === 'number' ? idx : 0;
-  _renderLightbox();
-  document.getElementById('lightbox').classList.add('open');
+function getWeekOfMonth(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  return Math.ceil(d.getDate()/7);
 }
 
-function _renderLightbox() {
-  document.getElementById('lightboxImg').src = _lbPhotos[_lbIdx];
-  const counter = document.getElementById('lbCounter');
-  const prev = document.getElementById('lbPrev');
-  const next = document.getElementById('lbNext');
-  if (_lbPhotos.length > 1) {
-    counter.textContent = `${_lbIdx + 1} / ${_lbPhotos.length}`;
-    counter.classList.add('visible');
-  } else {
-    counter.classList.remove('visible');
+function renderDriveList(){
+  if(!drives.length){
+    document.getElementById('drv-month-tabs').innerHTML='';
+    document.getElementById('drv-week-tabs').innerHTML='';
+    document.getElementById('drive-list').innerHTML='<div class="empty">아직 주행 기록이 없어요.</div>';
+    return;
   }
-  prev.style.opacity = _lbIdx > 0 ? '1' : '0';
-  prev.style.pointerEvents = _lbIdx > 0 ? 'auto' : 'none';
-  next.style.opacity = _lbIdx < _lbPhotos.length - 1 ? '1' : '0';
-  next.style.pointerEvents = _lbIdx < _lbPhotos.length - 1 ? 'auto' : 'none';
+
+  // 월 목록 추출
+  const months=[...new Set(drives.map(d=>d.date.slice(0,7)))].sort((a,b)=>b.localeCompare(a));
+  if(!drvSelMonth||!months.includes(drvSelMonth)) drvSelMonth=months[0];
+
+  // 월 탭 렌더
+  const mTabEl=document.getElementById('drv-month-tabs');
+  mTabEl.innerHTML=months.map(m=>{
+    const [y,mo]=m.split('-');
+    const active=m===drvSelMonth;
+    return `<button onclick="drvSelMonth='${m}';drvSelWeek=1;renderDriveList();"
+      style="padding:6px 14px;border-radius:20px;border:1.5px solid ${active?'var(--accent)':'var(--border)'};
+      background:${active?'var(--accent)':'transparent'};color:${active?'white':'var(--text2)'};
+      font-size:12px;font-weight:500;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">
+      ${parseInt(mo)}월
+    </button>`;
+  }).join('');
+
+  // 선택된 월의 주행 기록
+  const monthDrives=drives.filter(d=>d.date.slice(0,7)===drvSelMonth)
+    .sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  // 주차 목록 추출
+  const weeks=[...new Set(monthDrives.map(d=>getWeekOfMonth(d.date)))].sort((a,b)=>a-b);
+  if(!weeks.includes(drvSelWeek)) drvSelWeek=weeks[0];
+
+  // 주차 탭 렌더
+  const wTabEl=document.getElementById('drv-week-tabs');
+  wTabEl.innerHTML=weeks.map(w=>{
+    const active=w===drvSelWeek;
+    return `<button onclick="drvSelWeek=${w};renderDriveList();"
+      style="padding:5px 12px;border-radius:20px;border:1.5px solid ${active?'var(--accent-dark)':'var(--border)'};
+      background:${active?'var(--accent-light)':'transparent'};color:${active?'var(--accent-dark)':'var(--text2)'};
+      font-size:12px;font-weight:500;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">
+      ${w}주차
+    </button>`;
+  }).join('');
+
+  // 해당 주차 기록
+  const weekDrives=monthDrives.filter(d=>getWeekOfMonth(d.date)===drvSelWeek);
+  const totalKm=weekDrives.reduce((s,d)=>s+d.km,0);
+
+  const listEl=document.getElementById('drive-list');
+  if(!weekDrives.length){listEl.innerHTML='<div class="empty">이 주차에 기록이 없어요.</div>';return;}
+
+  listEl.innerHTML=weekDrives.map(d=>`
+    <div class="h-item">
+      <div class="h-left">
+        ${(d.from||d.to)?`<div class="station">${d.from||'?'} → ${d.to||'?'}</div>`:'<div class="station">주행 기록</div>'}
+        <div class="date">${d.date}${d.time?' '+d.time:''}</div>
+      </div>
+      <div class="h-right">
+        <div class="amount">${d.km.toLocaleString()}<span style="font-size:12px;font-weight:400;color:var(--text2);">km</span></div>
+      </div>
+      <div class="h-actions">
+        <button class="edit-btn" onclick="openDriveEditModal(${d.id})">✏️</button>
+        <button class="del-btn" onclick="delDrive(${d.id})">✕</button>
+      </div>
+    </div>`).join('')
+  +`<div style="background:var(--accent-light);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;margin-top:4px;">
+      <div style="font-size:12px;color:var(--accent-dark);font-weight:600;">${drvSelWeek}주차 합계</div>
+      <div style="font-size:14px;font-weight:700;color:var(--accent-dark);">${totalKm.toLocaleString()}km</div>
+    </div>`;
 }
 
-function lbPrev() {
-  if (_lbIdx > 0) { _lbIdx--; _renderLightbox(); }
-}
-function lbNext() {
-  if (_lbIdx < _lbPhotos.length - 1) { _lbIdx++; _renderLightbox(); }
-}
-function closeLightbox() {
-  document.getElementById('lightbox').classList.remove('open');
-}
-function lbTouchStart(e) { _lbTouchX = e.touches[0].clientX; }
-function lbTouchEnd(e) {
-  if (_lbTouchX === null) return;
-  const dx = e.changedTouches[0].clientX - _lbTouchX;
-  if (Math.abs(dx) > 50) { dx < 0 ? lbNext() : lbPrev(); }
-  _lbTouchX = null;
+function delDrive(id){
+  if(!confirm('이 주행 기록을 삭제할까요?'))return;
+  drives=drives.filter(d=>d.id!==id);
+  saveDrives();renderDriveList();showToast('삭제됐어요');
 }
 
-// ─── TOAST ──────────────────────────────────────────────
-function showToast(msg,type=''){
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.className='toast show '+type;
-  setTimeout(()=>t.className='toast',2500);
+let driveEditId=null;
+function openDriveEditModal(id){
+  const d=drives.find(x=>x.id===id);if(!d)return;
+  driveEditId=id;
+  document.getElementById('dedit-date').value=d.date;
+  document.getElementById('dedit-time').value=d.time||'';
+  document.getElementById('dedit-from').value=d.from||'';
+  document.getElementById('dedit-to').value=d.to||'';
+  document.getElementById('dedit-km').value=d.km;
+  document.getElementById('drive-edit-overlay').classList.remove('hidden');
+}
+function closeDriveEditModal(){document.getElementById('drive-edit-overlay').classList.add('hidden');driveEditId=null;}
+function saveDriveEdit(){
+  const d=drives.find(x=>x.id===driveEditId);if(!d)return;
+  const km=parseFloat(document.getElementById('dedit-km').value);
+  if(!km){showToast('주행거리를 입력해주세요');return;}
+  d.date=document.getElementById('dedit-date').value;
+  d.time=document.getElementById('dedit-time').value;
+  d.from=document.getElementById('dedit-from').value.trim();
+  d.to=document.getElementById('dedit-to').value.trim();
+  d.km=km;
+  saveDrives();closeDriveEditModal();renderDriveList();showToast('수정됐어요!');
 }
 
-// ─── START ──────────────────────────────────────────────
-window.addEventListener('load', initPin);
-if('serviceWorker' in navigator) navigator.serviceWorker.register('/diary/sw.js').catch(()=>{});
+let _ghDriveTimer=null;
+async function githubSaveDrives(){
+  const token=getGhToken();if(!token)return;
+  clearTimeout(_ghDriveTimer);
+  _ghDriveTimer=setTimeout(async()=>{
+    try{
+      const GH_DRIVE=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/data/lpg-drives.json`;
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify({drives,exportedAt:new Date().toISOString()}))));
+      let sha='';
+      try{const r=await fetch(GH_DRIVE,{headers:{Authorization:`token ${token}`}});if(r.ok){const j=await r.json();sha=j.sha;}}catch(e){}
+      const body={message:'sync: drive data',content};if(sha)body.sha=sha;
+      await fetch(GH_DRIVE,{method:'PUT',headers:{Authorization:`token ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    }catch(e){}
+  },1000);
+}
+
+function updateHeader(){const total=records.reduce((s,r)=>s+r.amount,0);const avgP=records.length?records.reduce((s,r)=>s+r.pricePerL,0)/records.length:0;document.getElementById('hs-cnt').innerHTML=`${records.length}<span class="hu">회</span>`;document.getElementById('hs-avg').innerHTML=`${Math.round(avgP)}<span class="hu">원/L</span>`;document.getElementById('hs-total').innerHTML=`${(total/10000).toFixed(1)}<span class="hu">만원</span>`;document.getElementById('hdr-sub').textContent=`총 ${records.length}회 충전 기록`;}
+
+function openEditModal(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  editId=id;editStation=r.station;
+  document.getElementById('edit-date').value=r.date;
+  document.getElementById('edit-time').value=r.time||'';
+  document.getElementById('edit-amount').value=r.amount;
+  document.getElementById('edit-price').value=r.pricePerL;
+  document.getElementById('edit-liter').value=r.liter.toFixed(2);
+  document.getElementById('edit-memo').value=r.memo||'';
+  document.getElementById('edit-odo').value=r.odo||'';
+  document.getElementById('edit-from').value=r.from||'';
+  document.getElementById('edit-to').value=r.to||'';
+  document.querySelectorAll('#edit-station-tabs .station-tab').forEach(b=>b.classList.toggle('active',b.textContent===r.station));
+  document.getElementById('edit-overlay').classList.remove('hidden');
+}
+function closeEditModal(){document.getElementById('edit-overlay').classList.add('hidden');editId=null;}
+function saveEdit(){
+  const r=records.find(x=>x.id===editId);if(!r)return;
+  const amount=parseFloat(document.getElementById('edit-amount').value);
+  const price=parseFloat(document.getElementById('edit-price').value);
+  if(!amount||!price){showToast('금액과 리터당 가격을 입력해주세요');return;}
+  r.date=document.getElementById('edit-date').value;
+  r.time=document.getElementById('edit-time').value;
+  r.station=editStation||r.station;
+  r.amount=amount;r.pricePerL=price;
+  r.liter=parseFloat(document.getElementById('edit-liter').value);
+  r.memo=document.getElementById('edit-memo').value.trim();
+  r.odo=parseFloat(document.getElementById('edit-odo').value)||null;
+  r.from=document.getElementById('edit-from').value.trim();
+  r.to=document.getElementById('edit-to').value.trim();
+  saveData();closeEditModal();updateHeader();renderHistory();showToast('수정됐어요!');
+}
+
+function renderHistory(){
+  const el=document.getElementById('history-list');
+  if(!records.length){el.innerHTML='<div class="empty">아직 충전 기록이 없어요.<br>첫 번째 충전을 기록해보세요!</div>';return;}
+
+  // 날짜+시간 합쳐서 정렬 (시간 없으면 00:00)
+  function dtStr(date, time){return date+'T'+(time||'00:00');}
+
+  const sorted=[...records].sort((a,b)=>dtStr(a.date,a.time).localeCompare(dtStr(b.date,b.time)));
+
+  const cards=sorted.map((r,i)=>{
+    const nextCharge=sorted[i+1];
+    const rDt=dtStr(r.date,r.time);
+    const nextDt=nextCharge?dtStr(nextCharge.date,nextCharge.time):null;
+    const relatedDrives=drives.filter(d=>{
+      const dDt=dtStr(d.date,d.time);
+      if(dDt < rDt) return false;
+      if(nextDt && dDt >= nextDt) return false;
+      return true;
+    }).sort((a,b)=>dtStr(a.date,a.time).localeCompare(dtStr(b.date,b.time)));
+    return {record:r, relatedDrives};
+  });
+
+  cards.reverse();
+
+  let html='';let lastMonth='';
+  cards.forEach(({record:r, relatedDrives},i)=>{
+    const m=r.date.slice(0,7);
+    if(m!==lastMonth){const[y,mo]=m.split('-');html+=`<div class="month-label">${y}년 ${parseInt(mo)}월</div>`;lastMonth=m;}
+
+    const prev=cards[i+1]?.record;
+    let badge='';
+    if(prev){const diff=r.pricePerL-prev.pricePerL;if(diff>0.5)badge=`<span class="badge badge-up">▲${diff.toFixed(1)}</span>`;else if(diff<-0.5)badge=`<span class="badge badge-dn">▼${Math.abs(diff).toFixed(1)}</span>`;}
+
+    const hasDrives=relatedDrives.length>0;
+    const totalKm=hasDrives?relatedDrives.reduce((s,d)=>s+d.km,0):0;
+    const did='drv-'+r.id;
+
+    let driveHTML='';
+    if(hasDrives){
+      driveHTML=`<div id="${did}" style="display:none;width:100%;margin-top:10px;padding-top:10px;border-top:1.5px dashed var(--border);">
+        ${relatedDrives.map(d=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
+            <div style="font-size:12px;color:var(--text2);">${d.date.slice(5).replace('-','/')}${(d.from||d.to)?` &nbsp;${d.from||'?'} → ${d.to||'?'}`:''}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--accent);">${d.km.toLocaleString()}km</div>
+          </div>`).join('')}
+        <div style="display:flex;justify-content:space-between;padding-top:7px;">
+          <div style="font-size:11px;color:var(--text3);">이 충전으로 총</div>
+          <div style="font-size:12px;font-weight:700;color:var(--accent-dark);">${totalKm.toLocaleString()}km 주행</div>
+        </div>
+      </div>`;
+    }
+
+    const cardAttr=hasDrives?`onclick="toggleDrive('${did}',this)" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;cursor:pointer;"`:
+      `style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;"`;
+
+    html+=`<div ${cardAttr}>      <div class="h-left" style="flex:1;">
+        <div class="station">${r.station}</div>
+        ${r.memo?`<div class="memo">${r.memo}</div>`:''}
+        <div class="date">${r.date}</div>
+      </div>
+      <div class="h-right">
+        <div class="amount">${r.amount.toLocaleString()}원${badge}</div>
+        <div class="detail">${r.liter.toFixed(1)}L 충전</div>
+        <div class="pprice">${r.pricePerL.toFixed(1)}원/L</div>
+      </div>
+      <div class="h-actions">
+        ${hasDrives?`<span class="arr" style="font-size:18px;color:var(--accent);margin-right:4px;">›</span>`:''}
+        <button class="edit-btn" onclick="event.stopPropagation();openEditModal(${r.id})">✏️</button>
+        <button class="del-btn" onclick="event.stopPropagation();delRecord(${r.id})">✕</button>
+      </div>
+      ${driveHTML}
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+function toggleDrive(id, card){
+  const el=document.getElementById(id); if(!el) return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  const arr=card.querySelector('.arr');
+  if(arr) arr.textContent=open?'›':'‹';
+}
+
+function delRecord(id){if(!confirm('이 기록을 삭제할까요?'))return;records=records.filter(r=>r.id!==id);saveData();updateHeader();renderHistory();showToast('삭제됐어요');}
+function renderStats(){
+  const now=new Date();
+  const thisM=records.filter(r=>{const d=new Date(r.date);return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();});
+  const amtM=thisM.reduce((s,r)=>s+r.amount,0);
+  const totalL=records.reduce((s,r)=>s+r.liter,0);
+  const avgP=records.length?records.reduce((s,r)=>s+r.pricePerL,0)/records.length:0;
+  document.getElementById('stats-grid').innerHTML=`
+    <div class="stat-card accent"><div class="lbl">이번달 충전 횟수</div><div class="val">${thisM.length}<span class="unit">회</span></div></div>
+    <div class="stat-card"><div class="lbl">이번달 총 금액</div><div class="val">${(amtM/10000).toFixed(1)}<span class="unit">만원</span></div></div>
+    <div class="stat-card"><div class="lbl">평균 단가</div><div class="val">${Math.round(avgP)}<span class="unit">원/L</span></div></div>
+    <div class="stat-card"><div class="lbl">전체 충전량</div><div class="val">${Math.round(totalL)}<span class="unit">L</span></div></div>`;
+  if(drives.length){
+    const totalKm=drives.reduce((s,d)=>s+d.km,0);
+    const avgKm=Math.round(totalKm/drives.length);
+    const avgKmL=totalL>0?(totalKm/totalL).toFixed(1):'-';
+    document.getElementById('drive-grid').innerHTML=`
+      <div class="stat-card"><div class="lbl">총 주행거리</div><div class="val">${totalKm.toLocaleString()}<span class="unit">km</span></div></div>
+      <div class="stat-card accent"><div class="lbl">평균 연비</div><div class="val">${avgKmL}<span class="unit">km/L</span></div></div>
+      <div class="stat-card"><div class="lbl">평균 주행거리</div><div class="val">${avgKm}<span class="unit">km</span></div></div>`;
+    const saved=Math.round((1700-avgP)*totalL);
+    document.getElementById('saving-wrap').innerHTML=`<div class="tip-card"><div class="tip-title">💰 휘발유 대비 절약액</div><div class="tip-body">LPG 평균 <strong>${Math.round(avgP)}원/L</strong> vs 휘발유 1,700원/L<br>총 <strong>${(saved/10000).toFixed(1)}만원</strong> 절약했어요! 🎉</div></div>`;
+    const monthly={};
+    drives.forEach(d=>{const m=d.date.slice(0,7);if(!monthly[m])monthly[m]=0;monthly[m]+=d.km;});
+    const months=Object.entries(monthly).sort((a,b)=>a[0].localeCompare(b[0]));
+    const maxKm=Math.max(...months.map(m=>m[1]));
+    document.getElementById('cal-card').style.display='block';
+    document.getElementById('drive-cal').innerHTML=months.map(([m,km])=>{
+      const mo=parseInt(m.split('-')[1]);
+      const pct=Math.round(km/maxKm*100);
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div style="font-size:11px;color:var(--text2);width:28px;flex-shrink:0;">${mo}월</div>
+        <div style="flex:1;background:var(--surface2);border-radius:4px;height:20px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:4px;display:flex;align-items:center;padding-left:7px;min-width:44px;">
+            <span style="font-size:10px;color:white;font-weight:700;">${km.toLocaleString()}km</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    document.getElementById('drive-grid').innerHTML='';
+    document.getElementById('saving-wrap').innerHTML='';
+    document.getElementById('cal-card').style.display='none';
+  }
+  renderChart(curType);
+  if(records.length>=2){
+    const prices=records.map(r=>r.pricePerL);
+    const min=Math.min(...prices),max=Math.max(...prices);
+    const best=records.find(r=>r.pricePerL===min);
+    const worst=records.find(r=>r.pricePerL===max);
+    document.getElementById('tip-body').innerHTML=`최저가: <strong>${min.toFixed(1)}원/L</strong> — ${best.station} (${best.date})<br>최고가: <strong>${max.toFixed(1)}원/L</strong> — ${worst.station} (${worst.date})<br>최저가 주유소만 이용하면 1회 평균 <strong>${Math.round((max-min)*47)}원</strong> 절약 가능해요!`;
+  }
+}
+function switchChart(btn,type){curType=type;document.querySelectorAll('.chart-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const titles={price:'리터당 가격 추이',amount:'충전 금액 추이',liter:'충전량 추이'};document.getElementById('chart-title').textContent=titles[type];renderChart(type);}
+function renderChart(type){if(!records.length)return;const sorted=[...records].sort((a,b)=>new Date(a.date)-new Date(b.date));const labels=sorted.map(r=>r.date.slice(5));const data=sorted.map(r=>type==='price'?parseFloat(r.pricePerL.toFixed(1)):type==='amount'?r.amount:parseFloat(r.liter.toFixed(1)));const colors={price:'#1D9E75',amount:'#378ADD',liter:'#BA7517'};const c=colors[type];if(chart)chart.destroy();chart=new Chart(document.getElementById('mainChart'),{type:'line',data:{labels,datasets:[{data,borderColor:c,backgroundColor:c+'18',fill:true,tension:0.38,pointBackgroundColor:c,pointRadius:4,pointHoverRadius:6,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const v=ctx.parsed.y;if(type==='price')return `${v.toFixed(1)}원/L`;if(type==='amount')return `${v.toLocaleString()}원`;return `${v.toFixed(1)}L`;}}}},scales:{x:{grid:{display:false},ticks:{font:{size:11},color:'#a0a59e',autoSkip:false,maxRotation:45}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},color:'#a0a59e'}}}}});}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/lpg/sw.js',{scope:'/lpg/'}));}
+// 토큰 있으면 자동으로 GitHub에서 불러오기
+if(getGhToken()){syncFromGitHub();}else{updateHeader();}
 </script>
 </body>
 </html>
