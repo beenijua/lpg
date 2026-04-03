@@ -172,12 +172,10 @@
         <div class="form-group"><label>주행거리 (km)</label><input type="number" id="drv-km" placeholder="예) 350" step="1"></div>
       </div>
       <button class="save-btn" onclick="saveDrive()">주행 기록 저장</button>
-      <!-- 월 탭 -->
-      <div id="drv-month-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:16px;margin-bottom:8px;"></div>
-      <!-- 주차 탭 -->
-      <div id="drv-week-tabs" style="display:flex;gap:6px;margin-bottom:12px;"></div>
-      <!-- 목록 -->
-      <div class="history-list" id="drive-list"></div>
+      <div style="margin-top:14px;background:var(--accent-light);border-radius:12px;padding:12px 14px;border:1px solid rgba(29,158,117,.15);">
+        <div style="font-size:12px;color:var(--accent-dark);font-weight:600;margin-bottom:4px;">주행 기록은 내역 탭에서 확인해요</div>
+        <div style="font-size:12px;color:var(--accent-dark);">충전 카드를 탭하면 해당 충전 이후 주행 기록이 펼쳐져요 ›</div>
+      </div>
     </div>
     <div id="tab-stats" class="section">
       <div class="stats-grid" id="stats-grid"></div>
@@ -303,7 +301,7 @@ async function githubSave(){
   clearTimeout(_ghTimer);
   _ghTimer=setTimeout(async()=>{
     try{
-      const content=btoa(unescape(encodeURIComponent(JSON.stringify({records,exportedAt:new Date().toISOString()}))));
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify({records,drives,exportedAt:new Date().toISOString()}))));
       let sha='';
       try{const r=await fetch(GH_API,{headers:{Authorization:`token ${token}`}});if(r.ok){const j=await r.json();sha=j.sha;}}catch(e){}
       const body={message:'sync: lpg data',content};if(sha)body.sha=sha;
@@ -333,9 +331,13 @@ async function syncFromGitHub(){
     if(data.records){
       records=data.records;
       localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+      if(data.drives){
+        drives=data.drives;
+        localStorage.setItem('lpg_drives',JSON.stringify(drives));
+      }
       updateHeader();renderHistory();
-      if(el)el.textContent=`✅ 기록 ${records.length}개 불러왔어요!`;
-      showToast(`기록 ${records.length}개 불러왔어요 ✅`);
+      if(el)el.textContent=`✅ 충전 ${records.length}개, 주행 ${drives.length}개 불러왔어요!`;
+      showToast(`데이터 불러왔어요 ✅`);
     }
   }catch(e){if(el)el.textContent='❌ 오류: '+e.message;}
 }
@@ -349,8 +351,32 @@ function selectEditStation(name){
   document.querySelectorAll('#edit-station-tabs .station-tab').forEach(b=>b.classList.toggle('active',b.textContent===name));
 }
 
-function backupData(){const data={records,exportedAt:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='lpg-backup.json';a.click();URL.revokeObjectURL(url);showToast('백업 저장됐어요!');}
-function restoreData(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const data=JSON.parse(ev.target.result);if(!data.records){showToast('올바른 백업 파일이 아니에요');return;}if(!confirm('현재 데이터를 백업으로 교체할까요?'))return;records=data.records;saveData();updateHeader();showToast('복원 완료!');}catch{showToast('파일을 읽을 수 없어요');}};reader.readAsText(file);e.target.value='';}
+function backupData(){
+  const data={records,drives,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='lpg-backup.json';a.click();
+  URL.revokeObjectURL(url);showToast('백업 저장됐어요!');
+}
+function restoreData(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(!data.records){showToast('올바른 백업 파일이 아니에요');return;}
+      if(!confirm('현재 데이터를 백업으로 교체할까요?'))return;
+      records=data.records;
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+      if(data.drives){
+        drives=data.drives;
+        localStorage.setItem('lpg_drives',JSON.stringify(drives));
+      }
+      updateHeader();showToast('복원 완료! (충전 '+records.length+'개, 주행 '+(drives.length)+'개)');
+    }catch{showToast('파일을 읽을 수 없어요');}
+  };
+  reader.readAsText(file);e.target.value='';
+}
 
 document.getElementById('inp-date').value=new Date().toISOString().split('T')[0];
 document.getElementById('drv-date').value=new Date().toISOString().split('T')[0];
