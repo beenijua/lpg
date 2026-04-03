@@ -571,9 +571,10 @@ function renderHistory(){
       </div>`;
     }
 
-    // 카드 탭하면 펼치기 (주행 기록 있을 때만)
-    html+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;${hasDrives?'cursor:pointer;':''}" ${hasDrives?'onclick="toggleDrive(\''+did+'\',this)"':''}>
-      <div class="h-left" style="flex:1;">
+    const cardAttr=hasDrives?`onclick="toggleDrive('${did}',this)" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;cursor:pointer;"`:
+      `style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;"`;
+
+    html+=`<div ${cardAttr}>      <div class="h-left" style="flex:1;">
         <div class="station">${r.station}</div>
         ${r.memo?`<div class="memo">${r.memo}</div>`:''}
         <div class="date">${r.date}</div>
