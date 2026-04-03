@@ -37,7 +37,7 @@
   .h-stat .hv { font-size: 16px; font-weight: 700; color: white; }
   .h-stat .hu { font-size: 10px; color: rgba(255,255,255,0.7); font-weight: 400; }
   .nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
-  .nav-btn { flex: 1; padding: 14px 8px; border: none; background: transparent; font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; font-family: 'Noto Sans KR', sans-serif; border-bottom: 2px solid transparent; transition: all 0.18s; }
+  .nav-btn { flex: 1; padding: 12px 4px; border: none; background: transparent; font-size: 11px; font-weight: 500; color: var(--text2); cursor: pointer; font-family: 'Noto Sans KR', sans-serif; border-bottom: 2px solid transparent; transition: all 0.18s; }
   .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .content { padding: 20px; }
   .section { display: none; }
@@ -572,9 +572,7 @@ function renderHistory(){
     }
 
     // 카드 탭하면 펼치기 (주행 기록 있을 때만)
-    const cardClick=hasDrives?`onclick="var d=document.getElementById('${did}');var open=d.style.display!=='none';d.style.display=open?'none':'block';this.querySelector('.arr').textContent=open?'›':'‹';"style="cursor:pointer;"`:'' ;
-
-    html+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;" ${cardClick}>
+    html+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;${hasDrives?'cursor:pointer;':''}" ${hasDrives?'onclick="toggleDrive(\''+did+'\',this)"':''}>
       <div class="h-left" style="flex:1;">
         <div class="station">${r.station}</div>
         ${r.memo?`<div class="memo">${r.memo}</div>`:''}
@@ -595,6 +593,14 @@ function renderHistory(){
   });
   el.innerHTML=html;
 }
+function toggleDrive(id, card){
+  const el=document.getElementById(id); if(!el) return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  const arr=card.querySelector('.arr');
+  if(arr) arr.textContent=open?'›':'‹';
+}
+
 function delRecord(id){if(!confirm('이 기록을 삭제할까요?'))return;records=records.filter(r=>r.id!==id);saveData();updateHeader();renderHistory();showToast('삭제됐어요');}
 function renderStats(){
   const now=new Date();
